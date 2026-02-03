@@ -1,9 +1,10 @@
-import { Brain, Github } from 'lucide-react'
+import { Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProgressBar } from '@/components/ProgressBar'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { ResearchChat } from '@/components/ResearchChat'
 import { ReportViewer } from '@/components/ReportViewer'
+import { GitHubLinkWithRestore } from '@/components/GitHubLink'
 import { useResearchStore } from '@/stores/researchStore'
 
 function App() {
@@ -24,17 +25,7 @@ function App() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <a
-              href="https://github.com/yourusername/deepresearch-platform"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <Github className="h-4 w-4" />
-              <span className="hidden sm:inline">GitHub</span>
-            </a>
-          </Button>
+          <GitHubLinkWithRestore />
           <SettingsPanel />
         </div>
       </header>
