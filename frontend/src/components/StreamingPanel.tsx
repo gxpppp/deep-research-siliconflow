@@ -122,12 +122,12 @@ export function StreamingPanel() {
   }
   
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full w-full relative overflow-hidden">
       {/* Scrollable content area */}
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 scroll-smooth"
+        className="flex-1 overflow-y-auto p-4 scroll-smooth min-h-0"
         style={{ 
           scrollbarWidth: 'thin',
           scrollbarColor: 'hsl(var(--muted-foreground)) transparent'

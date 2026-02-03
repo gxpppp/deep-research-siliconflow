@@ -113,27 +113,35 @@ export function ProcessVisualizer() {
         </TabsList>
 
         {/* Tab Contents */}
-        <div className="flex-1 overflow-hidden">
-          <TabsContent value="streaming" className="h-full m-0">
-            <StreamingPanel />
+        <div className="flex-1 overflow-hidden relative">
+          <TabsContent value="streaming" className="h-full m-0 data-[state=inactive]:hidden" forceMount>
+            <div className="absolute inset-0">
+              <StreamingPanel />
+            </div>
           </TabsContent>
 
-          <TabsContent value="planning" className="h-full m-0">
-            <ScrollArea className="h-full">
-              <PlanningPanel />
-            </ScrollArea>
+          <TabsContent value="planning" className="h-full m-0 data-[state=inactive]:hidden" forceMount>
+            <div className="absolute inset-0">
+              <ScrollArea className="h-full">
+                <PlanningPanel />
+              </ScrollArea>
+            </div>
           </TabsContent>
 
-          <TabsContent value="search" className="h-full m-0">
-            <ScrollArea className="h-full">
-              <SearchPanel />
-            </ScrollArea>
+          <TabsContent value="search" className="h-full m-0 data-[state=inactive]:hidden" forceMount>
+            <div className="absolute inset-0">
+              <ScrollArea className="h-full">
+                <SearchPanel />
+              </ScrollArea>
+            </div>
           </TabsContent>
 
-          <TabsContent value="analysis" className="h-full m-0">
-            <ScrollArea className="h-full">
-              <AnalysisPanel />
-            </ScrollArea>
+          <TabsContent value="analysis" className="h-full m-0 data-[state=inactive]:hidden" forceMount>
+            <div className="absolute inset-0">
+              <ScrollArea className="h-full">
+                <AnalysisPanel />
+              </ScrollArea>
+            </div>
           </TabsContent>
         </div>
       </Tabs>
