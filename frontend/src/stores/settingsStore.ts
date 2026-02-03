@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Settings, ModelHistoryEntry, PREDEFINED_PROVIDERS } from '@/types'
+import type { Settings, ModelHistoryEntry } from '@/types'
+import { PREDEFINED_PROVIDERS } from '@/types'
 
 /**
  * Settings store with localStorage persistence
@@ -33,6 +34,9 @@ interface SettingsState extends Settings {
   setMaxTokens: (tokens: number) => void
   setTemperature: (temp: number) => void
   setEnableTokenTracking: (enable: boolean) => void
+  
+  // Thinking mode
+  setEnableThinking: (enable: boolean) => void
 
   resetSettings: () => void
   getEffectiveModel: () => string
@@ -60,6 +64,9 @@ const defaultSettings: Settings = {
   maxTokens: 4000,
   temperature: 0.3,
   enableTokenTracking: false,
+  
+  // Thinking mode
+  enableThinking: false,
 }
 
 const MAX_HISTORY_SIZE = 10
@@ -146,6 +153,9 @@ export const useSettingsStore = create<SettingsState>()(
       setTemperature: (temperature) => set({ temperature }),
       setEnableTokenTracking: (enableTokenTracking) => set({ enableTokenTracking }),
       
+      // Thinking mode action
+      setEnableThinking: (enableThinking) => set({ enableThinking }),
+      
       resetSettings: () => set({ ...defaultSettings, modelHistory: get().modelHistory }),
       
       // Getters
@@ -180,10 +190,12 @@ export const useSettingsStore = create<SettingsState>()(
         maxResults: state.maxResults,
         enablePdf: state.enablePdf,
         language: state.language,
+        searchEngine: state.searchEngine,
         contextLength: state.contextLength,
         maxTokens: state.maxTokens,
         temperature: state.temperature,
         enableTokenTracking: state.enableTokenTracking,
+        enableThinking: state.enableThinking,
       }),
     }
   )
@@ -240,3 +252,7 @@ export const cryptoUtils = {
       key,
       ciphertext
     )
+    
+    return new TextDecoder().decode(decrypted)
+  },
+}

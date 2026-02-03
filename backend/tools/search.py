@@ -17,6 +17,7 @@ from utils.cache import get_cache, generate_cache_key
 
 class SearchEngine(str, Enum):
     """Supported search engines."""
+    UAPI = "uapi"
     BING = "bing"
     BAIDU = "baidu"
     DUCKDUCKGO = "duckduckgo"
@@ -27,7 +28,7 @@ class SearchEngine(str, Enum):
 DEFAULT_TIMEOUT = 15  # seconds
 MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
-DEFAULT_ENGINE = SearchEngine.BING
+DEFAULT_ENGINE = SearchEngine.UAPI  # UAPI is free and requires no API key
 
 # SerpAPI configuration (fallback)
 SERPAPI_BASE_URL = "https://serpapi.com/search"
@@ -42,12 +43,22 @@ def get_available_engines() -> List[Dict[str, Any]]:
     """
     engines = []
     
+    # Check UAPI (free, no API key needed)
+    engines.append({
+        "id": SearchEngine.UAPI,
+        "name": "UAPI Pro Search",
+        "description": "UAPI 智能搜索 - 限时免费，推荐",
+        "configured": True,  # No API key needed, always available
+        "requires_api_key": False,
+        "api_key_env": None
+    })
+    
     # Check Bing
     from .search_bing import check_bing_api_configured
     engines.append({
         "id": SearchEngine.BING,
         "name": "Bing",
-        "description": "微软必应搜索 - 推荐",
+        "description": "微软必应搜索",
         "configured": check_bing_api_configured(),
         "requires_api_key": True,
         "api_key_env": "BING_SEARCH_API_KEY"
@@ -225,7 +236,16 @@ async def _search_with_engine(
         Search result dict
     """
     try:
-        if engine == SearchEngine.BING:
+        if engine == SearchEngine.UAPI:
+            from .search_uapi import search_uapi
+            result = await search_uapi(
+                query=query,
+                max_results=max_results,
+                days=days
+            )
+            return _normalize_result(result, "uapi")
+            
+        elif engine == SearchEngine.BING:
             from .search_bing import search_bing
             result = await search_bing(
                 query=query,

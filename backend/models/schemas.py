@@ -21,6 +21,7 @@ class ResearchStatus(str, Enum):
 
 class SearchEngine(str, Enum):
     """Supported search engines."""
+    UAPI = "uapi"
     BING = "bing"
     BAIDU = "baidu"
     DUCKDUCKGO = "duckduckgo"
@@ -57,6 +58,10 @@ class Settings(BaseModel):
     search_engine: SearchEngine = Field(
         default=SearchEngine.BING,
         description="Search engine to use (bing/baidu/duckduckgo/serpapi)"
+    )
+    enable_thinking: bool = Field(
+        default=False,
+        description="Enable thinking/reasoning mode for supported models"
     )
 
     @validator('api_key')

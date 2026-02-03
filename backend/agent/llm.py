@@ -13,6 +13,37 @@ from langchain_openai import ChatOpenAI
 # Cache for models list to avoid repeated API calls
 _models_cache: Dict[str, List[Dict[str, Any]]] = {}
 
+# Models that support thinking/reasoning capability
+THINKING_MODELS = [
+    # DeepSeek R1 series
+    "deepseek-ai/DeepSeek-R1",
+    "Pro/deepseek-ai/DeepSeek-R1",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    # Qwen3 Thinking series
+    "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "Qwen/Qwen3-30B-A3B-Thinking-2507",
+    # GLM Z1 series
+    "THUDM/GLM-Z1-32B-0414",
+    "THUDM/GLM-Z1-Rumination-0414",
+    "THUDM/GLM-Z1-9B-0414",
+    # QwQ series
+    "Qwen/QwQ-32B",
+    "Qwen/QwQ-32B-Preview",
+    # Kimi Thinking series
+    "moonshotai/Kimi-K2-Thinking",
+    "Pro/moonshotai/Kimi-K2-Thinking",
+]
+
+def is_thinking_model(model_id: str) -> bool:
+    """Check if a model supports thinking/reasoning capability."""
+    if not model_id:
+        return False
+    model_id_lower = model_id.lower()
+    return any(thinking_model.lower() == model_id_lower for thinking_model in THINKING_MODELS)
+
 # Provider configurations
 PROVIDER_CONFIGS = {
     'siliconflow': {
@@ -51,6 +82,7 @@ def create_llm(
     max_tokens: int = 4000,
     context_length: int = 128000,
     streaming: bool = False,
+    enable_thinking: bool = False,
     **kwargs
 ) -> ChatOpenAI:
     """
@@ -65,6 +97,7 @@ def create_llm(
         max_tokens: Maximum tokens to generate
         context_length: Maximum context length for the model
         streaming: Whether to enable streaming mode
+        enable_thinking: Whether to enable thinking/reasoning mode for supported models
         **kwargs: Additional parameters for ChatOpenAI
         
     Returns:
@@ -111,6 +144,28 @@ def create_llm(
         }
     else:
         llm_kwargs["model_kwargs"] = kwargs.get("model_kwargs", {})
+    
+    # Enable thinking/reasoning mode for supported models
+    if enable_thinking and is_thinking_model(model_name):
+        # SiliconFlow uses different parameter names for different models
+        if "deepseek-r1" in model_name.lower():
+            # DeepSeek R1 uses reasoning_content
+            llm_kwargs["model_kwargs"]["reasoning_content"] = True
+        elif "qwen" in model_name.lower() and "thinking" in model_name.lower():
+            # Qwen Thinking models use thinking parameter
+            llm_kwargs["model_kwargs"]["thinking"] = True
+        elif "glm-z1" in model_name.lower() or "glm-z1-rumination" in model_name.lower():
+            # GLM Z1 series uses reasoning_content
+            llm_kwargs["model_kwargs"]["reasoning_content"] = True
+        elif "qwq" in model_name.lower():
+            # QwQ models use thinking parameter
+            llm_kwargs["model_kwargs"]["thinking"] = True
+        elif "kimi" in model_name.lower() and "thinking" in model_name.lower():
+            # Kimi Thinking models use reasoning_content
+            llm_kwargs["model_kwargs"]["reasoning_content"] = True
+        else:
+            # Default to reasoning_content for other thinking models
+            llm_kwargs["model_kwargs"]["reasoning_content"] = True
     
     # Add any additional kwargs (excluding model_kwargs which we handled above)
     for k, v in kwargs.items():

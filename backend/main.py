@@ -135,6 +135,29 @@ async def get_models(request: Optional[ModelsRequest] = None):
 
 
 # ==========================================
+# Search Engines Endpoint
+# ==========================================
+
+@app.get("/api/search-engines")
+async def get_search_engines():
+    """
+    Get list of available search engines with their configuration status.
+    
+    Returns:
+        List of search engine configurations
+    """
+    from tools.search import get_available_engines
+    
+    engines = get_available_engines()
+    default_engine = os.getenv("DEFAULT_SEARCH_ENGINE", "bing")
+    
+    return {
+        "engines": engines,
+        "default": default_engine
+    }
+
+
+# ==========================================
 # Main Research Endpoint (SSE Streaming)
 # ==========================================
 
@@ -174,7 +197,8 @@ async def start_research(request: ResearchRequest):
     workflow = ResearchWorkflow(
         api_key=request.settings.api_key,
         model=request.settings.model,
-        search_engine=request.settings.search_engine.value
+        search_engine=request.settings.search_engine.value,
+        enable_thinking=request.settings.enable_thinking
     )
     
     # Prepare settings

@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/dialog'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { fetchModels } from '@/services/api'
-import type { ModelConfig, ProviderConfig, SearchEngine } from '@/types'
-import { PREDEFINED_PROVIDERS, COMMON_MODELS } from '@/types'
+import type { ModelConfig } from '@/types'
+import { PREDEFINED_PROVIDERS, COMMON_MODELS, isThinkingModel } from '@/types'
 import { cn } from '@/lib/utils'
 import { SearchEngineSelector } from './SearchEngineSelector'
 
@@ -53,6 +53,7 @@ export function SettingsPanel() {
     maxTokens,
     temperature,
     enableTokenTracking,
+    enableThinking,
     setProvider,
     setCustomProviderUrl,
     setApiKey,
@@ -69,6 +70,7 @@ export function SettingsPanel() {
     setMaxTokens,
     setTemperature,
     setEnableTokenTracking,
+    setEnableThinking,
     resetSettings,
     getEffectiveModel,
   } = settings
@@ -323,7 +325,6 @@ export function SettingsPanel() {
                   <Switch
                     checked={useCustomModel}
                     onCheckedChange={setUseCustomModel}
-                    size="sm"
                   />
                 </div>
                 <Input
@@ -549,6 +550,27 @@ export function SettingsPanel() {
                   onCheckedChange={setEnableTokenTracking}
                 />
               </div>
+
+              {/* Enable Thinking Mode */}
+              {isThinkingModel(getEffectiveModel()) && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label className="text-sm flex items-center gap-1">
+                      启用思考模式
+                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                        推理模型
+                      </span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      展示模型详细的推理思考过程，提升分析深度
+                    </p>
+                  </div>
+                  <Switch
+                    checked={enableThinking}
+                    onCheckedChange={setEnableThinking}
+                  />
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -12,7 +12,6 @@ interface SearchEngineSelectorProps {
 export function SearchEngineSelector({ value, onChange, disabled = false }: SearchEngineSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [engines, setEngines] = useState<SearchEngineConfig[]>(PREDEFINED_SEARCH_ENGINES)
-  const [isLoading, setIsLoading] = useState(false)
 
   // Fetch available engines from backend
   useEffect(() => {
@@ -82,7 +81,7 @@ export function SearchEngineSelector({ value, onChange, disabled = false }: Sear
         
         <div className="flex items-center gap-2">
           {!selectedEngine?.configured && (
-            <AlertCircle className="w-4 h-4 text-amber-400" title="需要配置 API Key" />
+            <AlertCircle className="w-4 h-4 text-amber-400" />
           )}
           <ChevronDown className={`
             w-4 h-4 text-slate-400 transition-transform duration-200

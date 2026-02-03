@@ -1,7 +1,6 @@
 import { useResearchStore } from '@/stores/researchStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   BrainCircuit,
@@ -11,8 +10,7 @@ import {
   Lightbulb,
   Scale,
   Target,
-  Puzzle,
-  ChevronRight
+  Puzzle
 } from 'lucide-react'
 import type { AnalysisStep } from '@/types'
 
