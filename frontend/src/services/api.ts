@@ -5,7 +5,7 @@ import type { Settings, ModelConfig } from '@/types'
  * Handles SSE streaming for research requests
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
 
 /**
  * Get API base URL based on provider settings
