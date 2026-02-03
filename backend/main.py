@@ -173,7 +173,8 @@ async def start_research(request: ResearchRequest):
     # Create workflow instance
     workflow = ResearchWorkflow(
         api_key=request.settings.api_key,
-        model=request.settings.model
+        model=request.settings.model,
+        search_engine=request.settings.search_engine.value
     )
     
     # Prepare settings
@@ -181,7 +182,8 @@ async def start_research(request: ResearchRequest):
         "search_days": request.settings.search_days,
         "max_results": request.settings.max_results,
         "enable_pdf": request.settings.enable_pdf,
-        "language": request.settings.language
+        "language": request.settings.language,
+        "search_engine": request.settings.search_engine.value
     }
     
     async def event_generator() -> AsyncGenerator[str, None]:

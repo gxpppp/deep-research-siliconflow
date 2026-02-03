@@ -10,7 +10,7 @@ import type { Settings, ModelHistoryEntry, PREDEFINED_PROVIDERS } from '@/types'
 interface SettingsState extends Settings {
   // Model history
   modelHistory: ModelHistoryEntry[]
-  
+
   // Actions
   setProvider: (provider: string) => void
   setCustomProviderUrl: (url: string) => void
@@ -20,19 +20,20 @@ interface SettingsState extends Settings {
   setUseCustomModel: (use: boolean) => void
   addModelToHistory: (model: string, label: string) => void
   removeModelFromHistory: (model: string) => void
-  
+
   // Search settings
   setSearchDays: (days: number) => void
   setMaxResults: (max: number) => void
   setEnablePdf: (enable: boolean) => void
   setLanguage: (lang: 'zh' | 'en') => void
-  
+  setSearchEngine: (engine: import('@/types').SearchEngine) => void
+
   // Model parameters
   setContextLength: (length: number) => void
   setMaxTokens: (tokens: number) => void
   setTemperature: (temp: number) => void
   setEnableTokenTracking: (enable: boolean) => void
-  
+
   resetSettings: () => void
   getEffectiveModel: () => string
   getApiBaseUrl: () => string

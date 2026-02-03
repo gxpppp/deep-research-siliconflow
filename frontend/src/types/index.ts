@@ -42,6 +42,19 @@ export interface ModelHistoryEntry {
   useCount: number
 }
 
+// Search engine type
+export type SearchEngine = 'bing' | 'baidu' | 'duckduckgo' | 'serpapi'
+
+// Search engine configuration
+export interface SearchEngineConfig {
+  id: SearchEngine
+  name: string
+  description: string
+  configured: boolean
+  requiresApiKey: boolean
+  apiKeyEnv?: string
+}
+
 // User settings
 export interface Settings {
   // Provider settings
@@ -57,6 +70,7 @@ export interface Settings {
   maxResults: number
   enablePdf: boolean
   language: 'zh' | 'en'
+  searchEngine: SearchEngine
   
   // Model parameters (new)
   contextLength: number
@@ -269,6 +283,40 @@ export type SSEEventType =
   | 'analysis_complete'
   | 'complete'
   | 'error'
+
+// Predefined search engines
+export const PREDEFINED_SEARCH_ENGINES: SearchEngineConfig[] = [
+  {
+    id: 'bing',
+    name: 'Bing',
+    description: '微软必应搜索 - 推荐',
+    configured: true,
+    requiresApiKey: true,
+    apiKeyEnv: 'BING_SEARCH_API_KEY'
+  },
+  {
+    id: 'baidu',
+    name: '百度',
+    description: '百度搜索 - 适合中文内容',
+    configured: true,
+    requiresApiKey: false
+  },
+  {
+    id: 'duckduckgo',
+    name: 'DuckDuckGo',
+    description: 'DuckDuckGo - 隐私保护搜索',
+    configured: true,
+    requiresApiKey: false
+  },
+  {
+    id: 'serpapi',
+    name: 'SerpAPI (Google)',
+    description: 'Google 搜索 via SerpAPI',
+    configured: false,
+    requiresApiKey: true,
+    apiKeyEnv: 'SERPAPI_KEY'
+  }
+]
 
 // Predefined model providers
 export const PREDEFINED_PROVIDERS: ProviderConfig[] = [

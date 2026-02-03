@@ -76,6 +76,7 @@ export function startResearchStream(
       max_results: settings.maxResults,
       enable_pdf: settings.enablePdf,
       language: settings.language,
+      search_engine: settings.searchEngine,
       
       // Model parameters (new)
       context_length: settings.contextLength,

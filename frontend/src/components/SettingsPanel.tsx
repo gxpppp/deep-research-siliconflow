@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/dialog'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { fetchModels } from '@/services/api'
-import type { ModelConfig, ProviderConfig } from '@/types'
+import type { ModelConfig, ProviderConfig, SearchEngine } from '@/types'
 import { PREDEFINED_PROVIDERS, COMMON_MODELS } from '@/types'
 import { cn } from '@/lib/utils'
+import { SearchEngineSelector } from './SearchEngineSelector'
 
 export function SettingsPanel() {
   const [open, setOpen] = useState(false)
@@ -47,6 +48,7 @@ export function SettingsPanel() {
     searchDays,
     maxResults,
     enablePdf,
+    searchEngine,
     contextLength,
     maxTokens,
     temperature,
@@ -62,6 +64,7 @@ export function SettingsPanel() {
     setSearchDays,
     setMaxResults,
     setEnablePdf,
+    setSearchEngine,
     setContextLength,
     setMaxTokens,
     setTemperature,
@@ -403,7 +406,13 @@ export function SettingsPanel() {
                 <Sliders className="h-4 w-4" />
                 搜索设置
               </h4>
-              
+
+              {/* Search Engine Selector */}
+              <SearchEngineSelector
+                value={searchEngine}
+                onChange={(engine) => setSearchEngine(engine)}
+              />
+
               {/* Search Days */}
               <div className="space-y-2">
                 <div className="flex justify-between">

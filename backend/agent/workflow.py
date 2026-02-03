@@ -39,7 +39,7 @@ class ResearchWorkflow:
     
     Workflow stages:
     1. PLANNING: LLM generates initial search queries
-    2. SEARCHING: Execute DuckDuckGo searches
+    2. SEARCHING: Execute web searches
     3. SEARCH_ANALYSIS: LLM analyzes results, extracts facts, identifies gaps
     4. ITERATION_DECISION: LLM decides if more searches needed
     5. (Optional ITERATION: More searches based on decision)
@@ -47,16 +47,18 @@ class ResearchWorkflow:
     7. SYNTHESIS: LLM generates final structured report
     """
     
-    def __init__(self, api_key: str, model: Optional[str] = None):
+    def __init__(self, api_key: str, model: Optional[str] = None, search_engine: str = "bing"):
         """
         Initialize research workflow.
         
         Args:
             api_key: SiliconFlow API key
             model: Model name to use
+            search_engine: Search engine to use (bing/baidu/duckduckgo/serpapi)
         """
         self.api_key = api_key
         self.model = model
+        self.search_engine = search_engine
         self.llm = create_llm(api_key=api_key, model=model)
         self.streaming_llm = create_llm(api_key=api_key, model=model, streaming=True)
         
@@ -536,20 +538,25 @@ class ResearchWorkflow:
         failed_queries = []
         total = len(queries)
         
+        # Import SearchEngine enum
+        from tools.search import SearchEngine
+        
         for idx, search_query in enumerate(queries):
             progress = progress_start + int((idx / total) * (progress_end - progress_start))
             
             yield self._sse_event("tool_call", {
                 "tool": "search_web",
                 "query": search_query,
-                "progress": progress
+                "progress": progress,
+                "engine": self.search_engine
             })
             
             try:
                 result = await search_web(
                     query=search_query,
                     days=search_days,
-                    max_results=max_results
+                    max_results=max_results,
+                    engine=SearchEngine(self.search_engine)
                 )
                 
                 self._log_tool_call("search_web", {"query": search_query})
