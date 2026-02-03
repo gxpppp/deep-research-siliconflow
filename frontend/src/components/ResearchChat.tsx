@@ -5,7 +5,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useResearchStore } from '@/stores/researchStore'
 import { startResearchStream } from '@/services/api'
 import { generateId, cn } from '@/lib/utils'
-import type { ChatMessage, ResearchResponse, ResearchStatus, ToolCall, ToolResult } from '@/types'
+import type { ChatMessage, ResearchResponse, ResearchStatus, ToolCall, ToolResult, AnalysisStep } from '@/types'
 
 const MAX_QUERY_LENGTH = 50000
 
