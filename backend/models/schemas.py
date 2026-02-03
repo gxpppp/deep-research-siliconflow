@@ -54,6 +54,10 @@ class Settings(BaseModel):
         default="zh",
         description="Output language (zh/en)"
     )
+    search_engine: SearchEngine = Field(
+        default=SearchEngine.BING,
+        description="Search engine to use (bing/baidu/duckduckgo/serpapi)"
+    )
 
     @validator('api_key')
     def validate_api_key(cls, v):
