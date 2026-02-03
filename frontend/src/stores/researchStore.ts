@@ -5,11 +5,16 @@ import type {
   ChatMessage, 
   Citation,
   ConsoleLog,
-  ConsoleLogLevel
+  ConsoleLogLevel,
+  ProcessData,
+  PlanningData,
+  SearchRound,
+  AnalysisData,
+  AnalysisStep
 } from '@/types'
 
 /**
- * Research store for managing research state, chat messages, and console logs
+ * Research store for managing research state, chat messages, console logs, and process visualization
  */
 
 interface ResearchState {
@@ -34,6 +39,9 @@ interface ResearchState {
   isAutoScroll: boolean
   unreadLogCount: number
   
+  // Process visualization data
+  processData: ProcessData
+  
   // Actions
   startResearch: (researchId: string) => void
   updateStatus: (status: ResearchStatus, stage: string, progress: number, message: string) => void
@@ -48,6 +56,23 @@ interface ResearchState {
   toggleConsole: () => void
   toggleAutoScroll: () => void
   markLogsAsRead: () => void
+  
+  // Process visualization actions
+  setPlanningData: (data: PlanningData) => void
+  addSearchRound: (round: SearchRound) => void
+  updateSearchRound: (roundId: string, updates: Partial<SearchRound>) => void
+  toggleSearchRoundExpand: (roundId: string) => void
+  setAnalysisData: (data: AnalysisData) => void
+  addAnalysisStep: (step: AnalysisStep) => void
+  updateProcessPhase: (phase: ResearchStatus) => void
+  clearProcessData: () => void
+}
+
+const initialProcessData: ProcessData = {
+  planning: null,
+  searchRounds: [],
+  analysis: null,
+  currentPhase: 'pending'
 }
 
 export const useResearchStore = create<ResearchState>((set) => ({
@@ -67,6 +92,9 @@ export const useResearchStore = create<ResearchState>((set) => ({
   isConsoleOpen: false,
   isAutoScroll: true,
   unreadLogCount: 0,
+  
+  // Process visualization initial state
+  processData: initialProcessData,
 
   // Actions
   startResearch: (researchId) => set({
@@ -80,6 +108,7 @@ export const useResearchStore = create<ResearchState>((set) => ({
     sources: [],
     consoleLogs: [],
     unreadLogCount: 0,
+    processData: initialProcessData,
   }),
 
   updateStatus: (status, stage, progress, message) => set({
@@ -114,6 +143,7 @@ export const useResearchStore = create<ResearchState>((set) => ({
     sources: [],
     consoleLogs: [],
     unreadLogCount: 0,
+    processData: initialProcessData,
   }),
   
   // Console actions
@@ -144,4 +174,74 @@ export const useResearchStore = create<ResearchState>((set) => ({
   })),
   
   markLogsAsRead: () => set({ unreadLogCount: 0 }),
+  
+  // Process visualization actions
+  setPlanningData: (data) => set((state) => ({
+    processData: {
+      ...state.processData,
+      planning: data,
+      currentPhase: 'planning'
+    }
+  })),
+  
+  addSearchRound: (round) => set((state) => ({
+    processData: {
+      ...state.processData,
+      searchRounds: [...state.processData.searchRounds, round],
+      currentPhase: 'searching'
+    }
+  })),
+  
+  updateSearchRound: (roundId, updates) => set((state) => ({
+    processData: {
+      ...state.processData,
+      searchRounds: state.processData.searchRounds.map(round =>
+        round.id === roundId ? { ...round, ...updates } : round
+      )
+    }
+  })),
+  
+  toggleSearchRoundExpand: (roundId) => set((state) => ({
+    processData: {
+      ...state.processData,
+      searchRounds: state.processData.searchRounds.map(round =>
+        round.id === roundId ? { ...round, isExpanded: !round.isExpanded } : round
+      )
+    }
+  })),
+  
+  setAnalysisData: (data) => set((state) => ({
+    processData: {
+      ...state.processData,
+      analysis: data,
+      currentPhase: 'analyzing'
+    }
+  })),
+  
+  addAnalysisStep: (step) => set((state) => ({
+    processData: {
+      ...state.processData,
+      analysis: state.processData.analysis ? {
+        ...state.processData.analysis,
+        steps: [...state.processData.analysis.steps, step]
+      } : {
+        steps: [step],
+        keyFindings: [],
+        isComplete: false,
+        timestamp: new Date()
+      },
+      currentPhase: 'analyzing'
+    }
+  })),
+  
+  updateProcessPhase: (phase) => set((state) => ({
+    processData: {
+      ...state.processData,
+      currentPhase: phase
+    }
+  })),
+  
+  clearProcessData: () => set({
+    processData: initialProcessData
+  }),
 }))

@@ -186,6 +186,62 @@ export interface Conversation {
   updatedAt: Date
 }
 
+// Process Visualization Types
+
+// Planning phase data
+export interface PlanningData {
+  searchQueries: string[]
+  strategy: string
+  timestamp: Date
+  isComplete: boolean
+}
+
+// Single search result item
+export interface SearchResultItem {
+  title: string
+  url: string
+  snippet: string
+  source: string
+}
+
+// Search round data (one iteration)
+export interface SearchRound {
+  id: string
+  roundNumber: number
+  query: string
+  results: SearchResultItem[]
+  resultCount: number
+  durationMs: number
+  timestamp: Date
+  isExpanded: boolean
+}
+
+// Analysis step data
+export interface AnalysisStep {
+  id: string
+  stepNumber: number
+  title: string
+  content: string
+  type: 'insight' | 'comparison' | 'evaluation' | 'synthesis'
+  timestamp: Date
+}
+
+// Analysis phase data
+export interface AnalysisData {
+  steps: AnalysisStep[]
+  keyFindings: string[]
+  isComplete: boolean
+  timestamp: Date
+}
+
+// Complete process data
+export interface ProcessData {
+  planning: PlanningData | null
+  searchRounds: SearchRound[]
+  analysis: AnalysisData | null
+  currentPhase: ResearchStatus
+}
+
 // Predefined model providers
 export const PREDEFINED_PROVIDERS: ProviderConfig[] = [
   {
