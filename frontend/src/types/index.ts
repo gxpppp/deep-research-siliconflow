@@ -43,7 +43,7 @@ export interface ModelHistoryEntry {
 }
 
 // Search engine type
-export type SearchEngine = 'bing' | 'baidu' | 'duckduckgo' | 'serpapi'
+export type SearchEngine = 'uapi' | 'bing' | 'baidu' | 'duckduckgo' | 'serpapi'
 
 // Search engine configuration
 export interface SearchEngineConfig {
@@ -77,6 +77,9 @@ export interface Settings {
   maxTokens: number
   temperature: number
   enableTokenTracking: boolean
+  
+  // Thinking/Reasoning mode
+  enableThinking: boolean
 }
 
 // Research request
@@ -268,28 +271,39 @@ export interface StreamingContent {
   error?: string
 }
 
-// SSE Event types - extended
-export type SSEEventType = 
-  | 'status'
-  | 'tool_call'
-  | 'tool_result'
-  | 'thinking'
-  | 'search_query'
-  | 'source_found'
-  | 'content_start'
-  | 'content_chunk'
-  | 'content_complete'
-  | 'planning_complete'
-  | 'analysis_complete'
-  | 'complete'
-  | 'error'
+// Extended SSE Event types (merged with line 151)
+// Additional types: 'reasoning', 'content_start', 'content_chunk', 'content_complete', 'planning_complete', 'analysis_complete'
+
+// Research History Entry
+export interface ResearchHistoryEntry {
+  id: string
+  query: string
+  status: ResearchStatus
+  summary?: string
+  fullReport?: string
+  sources?: Citation[]
+  settings?: Settings
+  processData?: ProcessData
+  createdAt: Date
+  completedAt?: Date
+  durationMs?: number
+  isFavorite?: boolean
+  tags?: string[]
+}
 
 // Predefined search engines
 export const PREDEFINED_SEARCH_ENGINES: SearchEngineConfig[] = [
   {
+    id: 'uapi',
+    name: 'UAPI Pro Search',
+    description: 'UAPI 智能搜索 - 限时免费，推荐',
+    configured: true,
+    requiresApiKey: false
+  },
+  {
     id: 'bing',
     name: 'Bing',
-    description: '微软必应搜索 - 推荐',
+    description: '微软必应搜索',
     configured: true,
     requiresApiKey: true,
     apiKeyEnv: 'BING_SEARCH_API_KEY'
@@ -317,6 +331,38 @@ export const PREDEFINED_SEARCH_ENGINES: SearchEngineConfig[] = [
     apiKeyEnv: 'SERPAPI_KEY'
   }
 ]
+
+// Models that support thinking/reasoning capability
+export const THINKING_MODELS: string[] = [
+  // DeepSeek R1 series
+  'deepseek-ai/DeepSeek-R1',
+  'Pro/deepseek-ai/DeepSeek-R1',
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
+  'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
+  // Qwen3 Thinking series
+  'Qwen/Qwen3-235B-A22B-Thinking-2507',
+  'Qwen/Qwen3-30B-A3B-Thinking-2507',
+  // GLM Z1 series
+  'THUDM/GLM-Z1-32B-0414',
+  'THUDM/GLM-Z1-Rumination-0414',
+  'THUDM/GLM-Z1-9B-0414',
+  // QwQ series
+  'Qwen/QwQ-32B',
+  'Qwen/QwQ-32B-Preview',
+  // Kimi Thinking series
+  'moonshotai/Kimi-K2-Thinking',
+  'Pro/moonshotai/Kimi-K2-Thinking',
+]
+
+// Check if a model supports thinking
+export function isThinkingModel(modelId: string): boolean {
+  if (!modelId) return false
+  return THINKING_MODELS.some(thinkingModel => 
+    thinkingModel.toLowerCase() === modelId.toLowerCase()
+  )
+}
 
 // Predefined model providers
 export const PREDEFINED_PROVIDERS: ProviderConfig[] = [

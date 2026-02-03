@@ -47,7 +47,7 @@ class ResearchWorkflow:
     7. SYNTHESIS: LLM generates final structured report
     """
     
-    def __init__(self, api_key: str, model: Optional[str] = None, search_engine: str = "bing"):
+    def __init__(self, api_key: str, model: Optional[str] = None, search_engine: str = "bing", enable_thinking: bool = False):
         """
         Initialize research workflow.
         
@@ -55,12 +55,14 @@ class ResearchWorkflow:
             api_key: SiliconFlow API key
             model: Model name to use
             search_engine: Search engine to use (bing/baidu/duckduckgo/serpapi)
+            enable_thinking: Whether to enable thinking/reasoning mode for supported models
         """
         self.api_key = api_key
         self.model = model
         self.search_engine = search_engine
-        self.llm = create_llm(api_key=api_key, model=model)
-        self.streaming_llm = create_llm(api_key=api_key, model=model, streaming=True)
+        self.enable_thinking = enable_thinking
+        self.llm = create_llm(api_key=api_key, model=model, enable_thinking=enable_thinking)
+        self.streaming_llm = create_llm(api_key=api_key, model=model, streaming=True, enable_thinking=enable_thinking)
         
         # Load system prompt
         self.system_prompt = self._load_system_prompt()
@@ -622,11 +624,15 @@ class ResearchWorkflow:
 - 信息缺口: {', '.join(prev.get('information_gaps', [])[:3])}
 - 建议搜索: {', '.join(prev.get('suggested_searches', [])[:3])}"""
         
-        analysis_prompt = analysis_prompt_template.format(
-            query=query,
-            current_search=f"第{iteration}轮搜索",
-            search_results=context,
-            previous_analysis=previous_analysis
+        # Use replace instead of format to avoid issues with JSON braces in template
+        analysis_prompt = analysis_prompt_template.replace(
+            "{query}", query
+        ).replace(
+            "{current_search}", f"第{iteration}轮搜索"
+        ).replace(
+            "{search_results}", context
+        ).replace(
+            "{previous_analysis}", previous_analysis
         )
 
         try:
@@ -671,14 +677,21 @@ class ResearchWorkflow:
         # Get latest analysis
         latest_analysis = self.search_analyses[-1] if self.search_analyses else {}
         
-        decision_prompt = decision_prompt_template.format(
-            query=query,
-            current_iteration=current_iteration,
-            max_iterations=self.max_iterations,
-            completed_searches="\n".join(completed_searches[:20]),
-            collected_facts=json.dumps(self.extracted_facts[:10], ensure_ascii=False),
-            information_gaps=json.dumps(latest_analysis.get("information_gaps", []), ensure_ascii=False),
-            previous_suggestions=json.dumps(latest_analysis.get("suggested_searches", []), ensure_ascii=False)
+        # Use replace instead of format to avoid issues with JSON braces in template
+        decision_prompt = decision_prompt_template.replace(
+            "{query}", query
+        ).replace(
+            "{current_iteration}", str(current_iteration)
+        ).replace(
+            "{max_iterations}", str(self.max_iterations)
+        ).replace(
+            "{completed_searches}", "\n".join(completed_searches[:20])
+        ).replace(
+            "{collected_facts}", json.dumps(self.extracted_facts[:10], ensure_ascii=False)
+        ).replace(
+            "{information_gaps}", json.dumps(latest_analysis.get("information_gaps", []), ensure_ascii=False)
+        ).replace(
+            "{previous_suggestions}", json.dumps(latest_analysis.get("suggested_searches", []), ensure_ascii=False)
         )
 
         try:
@@ -745,10 +758,13 @@ class ResearchWorkflow:
                 f"- 信息缺口: {', '.join(analysis.get('information_gaps', [])[:3])}"
             )
         
-        deep_analysis_prompt = deep_analysis_prompt_template.format(
-            query=query,
-            all_sources=all_sources,
-            search_analyses="\n\n".join(search_analyses_summary)
+        # Use replace instead of format to avoid issues with JSON braces in template
+        deep_analysis_prompt = deep_analysis_prompt_template.replace(
+            "{query}", query
+        ).replace(
+            "{all_sources}", all_sources
+        ).replace(
+            "{search_analyses}", "\n\n".join(search_analyses_summary)
         )
 
         # Inject time context to system message
@@ -826,10 +842,13 @@ class ResearchWorkflow:
                 f"- 信息缺口: {', '.join(analysis.get('information_gaps', [])[:3])}"
             )
         
-        deep_analysis_prompt = deep_analysis_prompt_template.format(
-            query=query,
-            all_sources=all_sources,
-            search_analyses="\n\n".join(search_analyses_summary)
+        # Use replace instead of format to avoid issues with JSON braces in template
+        deep_analysis_prompt = deep_analysis_prompt_template.replace(
+            "{query}", query
+        ).replace(
+            "{all_sources}", all_sources
+        ).replace(
+            "{search_analyses}", "\n\n".join(search_analyses_summary)
         )
 
         try:

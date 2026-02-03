@@ -3,6 +3,7 @@ import { Send, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useResearchStore } from '@/stores/researchStore'
+import { useResearchHistoryStore } from '@/stores/researchHistoryStore'
 import { startResearchStream } from '@/services/api'
 import { generateId, cn } from '@/lib/utils'
 import type { ChatMessage, ResearchResponse, ResearchStatus, ToolCall, ToolResult, AnalysisStep } from '@/types'
@@ -217,6 +218,19 @@ export function ResearchChat() {
             addConsoleLog('thinking', `思考: ${thinkingData.content.substring(0, 100)}...`, thinkingData)
             break
 
+          case 'reasoning':
+            const reasoningData = event.data as { content: string; stage?: string }
+            addConsoleLog('thinking', `推理: ${reasoningData.content.substring(0, 100)}...`, reasoningData)
+            // Also append to streaming content if there's an active stream
+            if (reasoningData.content) {
+              const { processData } = useResearchStore.getState()
+              const activeStream = processData.streamingContents.find(s => s.isStreaming)
+              if (activeStream) {
+                appendStreamingContent(activeStream.id, `\n\n> **思考过程**: ${reasoningData.content}\n\n`)
+              }
+            }
+            break
+
           case 'content_start':
             const contentStartData = event.data as { id: string; stage: string; title: string }
             const stage = contentStartData.stage as 'planning' | 'search_analysis' | 'deep_analysis' | 'synthesis'
@@ -300,6 +314,10 @@ export function ResearchChat() {
             }
 
             setReport(response)
+
+            // Save to history
+            const { processData } = useResearchStore.getState()
+            useResearchHistoryStore.getState().addEntry(response, processData, settings)
 
             // Add success console log
             addConsoleLog('success', `研究完成！耗时 ${(completeData.duration_ms / 1000).toFixed(1)} 秒`, {

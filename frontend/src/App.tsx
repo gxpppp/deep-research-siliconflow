@@ -1,16 +1,19 @@
-import { Brain } from 'lucide-react'
+import { useState } from 'react'
+import { Brain, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProgressBar } from '@/components/ProgressBar'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { ResearchChat } from '@/components/ResearchChat'
 import { ReportViewer } from '@/components/ReportViewer'
 import { ProcessVisualizer } from '@/components/ProcessVisualizer'
+import { ResearchHistoryPanel } from '@/components/ResearchHistoryPanel'
 import { GitHubLinkWithRestore } from '@/components/GitHubLink'
 import { useResearchStore } from '@/stores/researchStore'
 import { cn } from '@/lib/utils'
 
 function App() {
   const { isResearching, progress, currentStage, statusMessage, report } = useResearchStore()
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -27,6 +30,15 @@ function App() {
         </div>
         
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsHistoryOpen(true)}
+            className="gap-2"
+          >
+            <History className="h-4 w-4" />
+            历史记录
+          </Button>
           <GitHubLinkWithRestore />
           <SettingsPanel />
         </div>
@@ -68,6 +80,12 @@ function App() {
           <ReportViewer />
         </div>
       </main>
+
+      {/* History Panel */}
+      <ResearchHistoryPanel
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+      />
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t bg-card text-xs text-muted-foreground">
