@@ -420,8 +420,6 @@ class ResearchWorkflow:
             "queries": search_queries,
             "strategy": accumulated_content[:500] if len(accumulated_content) > 500 else accumulated_content
         })
-        
-        return search_queries
     
     def _extract_search_queries(self, content: str, fallback_query: str) -> List[str]:
         """Extract search queries from LLM response."""
@@ -1148,7 +1146,7 @@ class ResearchWorkflow:
             
         except Exception as e:
             print(f"Streaming error in {stage}: {e}")
-            # Send error event but still return what we have
+            # Send error event
             yield self._sse_event("content_complete", {
                 "id": content_id,
                 "stage": stage,
@@ -1157,5 +1155,3 @@ class ResearchWorkflow:
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             })
-        
-        return accumulated_content

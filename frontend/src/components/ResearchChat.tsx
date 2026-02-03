@@ -33,6 +33,11 @@ export function ResearchChat() {
     setAnalysisData,
     addAnalysisStep,
     updateProcessPhase,
+    // Streaming content actions
+    startStreamingContent,
+    appendStreamingContent,
+    completeStreamingContent,
+    clearStreamingContents,
   } = useResearchStore()
 
   const handleSubmit = useCallback(async () => {
@@ -65,6 +70,12 @@ export function ResearchChat() {
     // Clear input
     const currentQuery = query
     setQuery('')
+    
+    // Clear previous streaming contents
+    clearStreamingContents()
+    
+    // Track active streaming contents
+    const activeStreams = new Map<string, string>()
 
     // Start SSE stream
     abortRef.current = startResearchStream(
@@ -204,34 +215,29 @@ export function ResearchChat() {
           case 'thinking':
             const thinkingData = event.data as { content: string; stage?: string }
             addConsoleLog('thinking', `思考: ${thinkingData.content.substring(0, 100)}...`, thinkingData)
-            
-            // If thinking is from planning stage, update planning data
-            if (thinkingData.stage === 'planning' || thinkingData.content.includes('搜索查询')) {
-              // Try to extract search queries from thinking content
-              const queryMatch = thinkingData.content.match(/搜索查询[：:]\s*([\s\S]*?)(?=\n\n|$)/)
-              if (queryMatch) {
-                const queries = queryMatch[1].split('\n').filter(q => q.trim()).map(q => q.replace(/^\d+\.\s*/, '').trim())
-                if (queries.length > 0) {
-                  setPlanningData({
-                    searchQueries: queries,
-                    strategy: thinkingData.content,
-                    timestamp: new Date(),
-                    isComplete: false,
-                  })
-                }
-              }
+            break
+
+          case 'content_start':
+            const contentStartData = event.data as { id: string; stage: string; title: string }
+            const stage = contentStartData.stage as 'planning' | 'search_analysis' | 'deep_analysis' | 'synthesis'
+            const streamId = startStreamingContent(stage, contentStartData.title)
+            activeStreams.set(contentStartData.id, streamId)
+            break
+
+          case 'content_chunk':
+            const contentChunkData = event.data as { id: string; chunk: string }
+            const activeStreamId = activeStreams.get(contentChunkData.id)
+            if (activeStreamId) {
+              appendStreamingContent(activeStreamId, contentChunkData.chunk)
             }
-            
-            // If thinking is from analysis stage, add analysis step
-            if (thinkingData.stage === 'analysis' || thinkingData.content.includes('分析')) {
-              addAnalysisStep({
-                id: generateId(),
-                stepNumber: 0,
-                title: '分析步骤',
-                content: thinkingData.content,
-                type: 'insight',
-                timestamp: new Date(),
-              })
+            break
+
+          case 'content_complete':
+            const contentCompleteData = event.data as { id: string; content: string; error?: string }
+            const completedStreamId = activeStreams.get(contentCompleteData.id)
+            if (completedStreamId) {
+              completeStreamingContent(completedStreamId)
+              activeStreams.delete(contentCompleteData.id)
             }
             break
 
@@ -327,7 +333,7 @@ export function ResearchChat() {
         updateStatus('error', '错误', 0, err.message)
       }
     )
-  }, [query, isResearching, settings, startResearch, updateStatus, setReport, addMessage, addConsoleLog, setPlanningData, addSearchRound, updateSearchRound, setAnalysisData, addAnalysisStep, updateProcessPhase])
+  }, [query, isResearching, settings, startResearch, updateStatus, setReport, addMessage, addConsoleLog, setPlanningData, addSearchRound, updateSearchRound, setAnalysisData, addAnalysisStep, updateProcessPhase, startStreamingContent, appendStreamingContent, completeStreamingContent, clearStreamingContents])
 
   // Auto-resize textarea based on content
   useEffect(() => {

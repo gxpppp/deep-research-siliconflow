@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useResearchStore } from '@/stores/researchStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,29 +9,44 @@ import {
   Search, 
   BrainCircuit, 
   Clock,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react'
 import { PlanningPanel } from './PlanningPanel'
 import { SearchPanel } from './SearchPanel'
 import { AnalysisPanel } from './AnalysisPanel'
+import { StreamingPanel } from './StreamingPanel'
 
 export function ProcessVisualizer() {
   const { processData, isResearching, status } = useResearchStore()
-  const [activeTab, setActiveTab] = useState('planning')
+  const [activeTab, setActiveTab] = useState('streaming')
 
   // Auto-switch tab based on current phase
   const getActiveTab = () => {
+    // Prioritize streaming tab when there's active streaming content
+    if (processData.streamingContents.some(c => c.isStreaming)) {
+      return 'streaming'
+    }
     if (processData.currentPhase === 'planning') return 'planning'
     if (processData.currentPhase === 'searching') return 'search'
     if (processData.currentPhase === 'analyzing' || processData.currentPhase === 'synthesizing') return 'analysis'
     return activeTab
   }
 
+  // Auto-switch to streaming when new streaming content arrives
+  useEffect(() => {
+    if (processData.streamingContents.some(c => c.isStreaming)) {
+      setActiveTab('streaming')
+    }
+  }, [processData.streamingContents])
+
   const currentTab = isResearching ? getActiveTab() : activeTab
 
   // Get counts for badges
   const searchCount = processData.searchRounds.length
   const analysisStepCount = processData.analysis?.steps.length || 0
+  const streamingCount = processData.streamingContents.length
+  const activeStreamingCount = processData.streamingContents.filter(c => c.isStreaming).length
 
   return (
     <div className="flex flex-col h-full bg-card border-l">
@@ -53,7 +68,21 @@ export function ProcessVisualizer() {
 
       {/* Tabs */}
       <Tabs value={currentTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-3 rounded-none border-b bg-muted/50 h-10">
+        <TabsList className="grid w-full grid-cols-4 rounded-none border-b bg-muted/50 h-10">
+          <TabsTrigger value="streaming" className="text-xs gap-1.5 relative">
+            <Zap className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">实时输出</span>
+            {activeStreamingCount > 0 && (
+              <Badge variant="default" className="text-[10px] h-4 px-1 animate-pulse">
+                {activeStreamingCount}
+              </Badge>
+            )}
+            {streamingCount > 0 && activeStreamingCount === 0 && (
+              <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                {streamingCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="planning" className="text-xs gap-1.5">
             <Lightbulb className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">规划</span>
@@ -85,6 +114,10 @@ export function ProcessVisualizer() {
 
         {/* Tab Contents */}
         <div className="flex-1 overflow-hidden">
+          <TabsContent value="streaming" className="h-full m-0">
+            <StreamingPanel />
+          </TabsContent>
+
           <TabsContent value="planning" className="h-full m-0">
             <ScrollArea className="h-full">
               <PlanningPanel />
