@@ -245,7 +245,7 @@ class ResearchWorkflow:
                 
                 break  # No more searches needed or max iterations reached
             
-            # Stage 5: Deep Analysis
+            # Stage 5: Deep Analysis with streaming
             yield self._sse_event("status", {
                 "status": ResearchStatus.ANALYZING,
                 "stage": "深度分析",
@@ -253,7 +253,23 @@ class ResearchWorkflow:
                 "message": "正在对所有信息进行深度分析..."
             })
             
-            deep_analysis = await self._perform_deep_analysis(query)
+            # Stream deep analysis
+            deep_analysis_content = ""
+            async for event in self._perform_deep_analysis_streaming(query):
+                yield event
+                if 'event: content_complete' in event:
+                    try:
+                        lines = event.strip().split('\n')
+                        for line in lines:
+                            if line.startswith('data: '):
+                                data = json.loads(line[6:])
+                                deep_analysis_content = data.get('content', '')
+                                break
+                    except:
+                        pass
+            
+            # Parse deep analysis result
+            deep_analysis = self._parse_deep_analysis(deep_analysis_content)
             
             yield self._sse_event("thinking", {
                 "content": f"深度分析完成: {len(deep_analysis.get('key_findings', {}).get('core_insights', []))} 个核心洞察, "
@@ -283,7 +299,7 @@ class ResearchWorkflow:
                         })
                         break
             
-            # Stage 7: Generate final report
+            # Stage 7: Generate final report with streaming
             yield self._sse_event("status", {
                 "status": ResearchStatus.SYNTHESIZING,
                 "stage": "综合总结",
@@ -291,7 +307,24 @@ class ResearchWorkflow:
                 "message": "正在生成最终研究报告..."
             })
             
-            report = await self._generate_report(query, scraped_contents, deep_analysis)
+            # Stream report generation
+            report_content = ""
+            async for event in self._generate_report_streaming(query, scraped_contents, deep_analysis):
+                yield event
+                if 'event: content_complete' in event:
+                    try:
+                        lines = event.strip().split('\n')
+                        for line in lines:
+                            if line.startswith('data: '):
+                                data = json.loads(line[6:])
+                                report_content = data.get('content', '')
+                                break
+                    except:
+                        pass
+            
+            # Parse report
+            report = self._parse_report(report_content)
+            report["raw_content"] = report_content
             
             # Calculate duration
             duration_ms = int((time.time() - start_time) * 1000)
