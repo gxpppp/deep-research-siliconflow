@@ -40,6 +40,9 @@ Thumbs.db
 # Logs
 *.log
 logs/
+log/
+!log/.gitkeep
+!log/README.md
 
 # Local config
 .env

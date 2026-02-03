@@ -7,12 +7,15 @@ Provides unified interface with automatic fallback.
 import os
 import time
 import asyncio
+import logging
 from enum import Enum
 from typing import List, Dict, Any, Optional
 import httpx
 from datetime import datetime, timedelta
 
 from utils.cache import get_cache, generate_cache_key
+
+logger = logging.getLogger(__name__)
 
 
 class SearchEngine(str, Enum):
@@ -173,14 +176,14 @@ async def search_web(
         return result
     
     # If primary engine failed, try fallback engines
-    print(f"{engine.value} search failed: {result.get('error')}, trying fallback...")
+    logger.warning(f"{engine.value} search failed: {result.get('error')}, trying fallback...")
     
     # Define fallback order
     fallback_order = [SearchEngine.BING, SearchEngine.BAIDU, SearchEngine.SERPAPI]
     fallback_order = [e for e in fallback_order if e != engine]
     
     for fallback_engine in fallback_order:
-        print(f"Trying fallback engine: {fallback_engine.value}")
+        logger.info(f"Trying fallback engine: {fallback_engine.value}")
         fallback_result = await _search_with_engine(
             query, days, max_results, fallback_engine, **kwargs
         )
@@ -200,7 +203,7 @@ async def search_web(
             fallback_result["fallback_from"] = engine.value
             return fallback_result
         
-        print(f"Fallback {fallback_engine.value} also failed: {fallback_result.get('error')}")
+        logger.warning(f"Fallback {fallback_engine.value} also failed: {fallback_result.get('error')}")
     
     # All engines failed
     search_time = time.time() - start_time

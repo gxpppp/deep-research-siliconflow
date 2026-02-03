@@ -5,10 +5,13 @@ via the ddgs (DuckDuckGo Search) Python library.
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional
 from ddgs import DDGS
 import aiohttp
 import urllib.parse
+
+logger = logging.getLogger(__name__)
 
 # Configuration
 DDGS_TIMEOUT = 30.0  # Increased timeout for DDGS
@@ -59,17 +62,17 @@ async def search_duckduckgo(
             if result["success"] and result["total"] > 0:
                 return result
             elif attempt < MAX_RETRIES - 1:
-                print(f"DDGS attempt {attempt + 1} returned no results, retrying...")
+                logger.warning(f"DDGS attempt {attempt + 1} returned no results, retrying...")
                 await asyncio.sleep(1)
         except asyncio.TimeoutError:
-            print(f"DuckDuckGo search timeout (attempt {attempt + 1}/{MAX_RETRIES}) for query: {query}")
+            logger.warning(f"DuckDuckGo search timeout (attempt {attempt + 1}/{MAX_RETRIES}) for query: {query}")
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(1)
         except Exception as e:
-            print(f"DuckDuckGo search error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
+            logger.error(f"DuckDuckGo search error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(1)
-    
+
     # Fallback to direct DuckDuckGo HTML scraping
     try:
         result = await asyncio.wait_for(
@@ -79,9 +82,9 @@ async def search_duckduckgo(
         if result["success"] and result["total"] > 0:
             return result
     except asyncio.TimeoutError:
-        print(f"HTML search timeout for query: {query}")
+        logger.warning(f"HTML search timeout for query: {query}")
     except Exception as e:
-        print(f"HTML search error: {e}")
+        logger.error(f"HTML search error: {e}")
     
     # Return empty result if all methods failed
     return {

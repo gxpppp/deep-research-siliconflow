@@ -137,3 +137,17 @@ def format_time_for_search_query() -> str:
     month = now.month
     
     return f"{year}年{month}月"
+
+
+def get_current_time_context() -> str:
+    """
+    Get current time context as a simple string for planning prompts.
+    
+    Returns:
+        Simple time context string
+    """
+    now = datetime.now()
+    weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+    weekday = weekdays[now.weekday()]
+    
+    return f"{now.strftime('%Y年%m月%d日')} {weekday}"

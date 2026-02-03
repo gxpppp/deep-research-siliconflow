@@ -6,8 +6,11 @@ Currently in limited-time free tier (86,252 calls).
 
 import os
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional
 import httpx
+
+logger = logging.getLogger(__name__)
 
 # API Configuration
 UAPI_BASE_URL = "https://uapis.cn/api/v1"
@@ -175,15 +178,15 @@ async def test_uapi_search():
     )
     
     if result["success"]:
-        print(f"✅ UAPI search successful!")
-        print(f"   Found {result['total_results']} results")
-        print(f"   Process time: {result['process_time_ms']}ms")
-        print(f"   Cached: {result['cached']}")
-        print("\nTop results:")
+        logger.info(f"✅ UAPI search successful!")
+        logger.info(f"   Found {result['total_results']} results")
+        logger.info(f"   Process time: {result['process_time_ms']}ms")
+        logger.info(f"   Cached: {result['cached']}")
+        logger.info("Top results:")
         for r in result["results"][:3]:
-            print(f"   {r['rank']}. {r['title'][:50]}...")
+            logger.info(f"   {r['rank']}. {r['title'][:50]}...")
     else:
-        print(f"❌ UAPI search failed: {result['error']}")
+        logger.error(f"❌ UAPI search failed: {result['error']}")
     
     return result
 

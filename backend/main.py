@@ -6,6 +6,7 @@ Main application entry point with SSE streaming support.
 
 import os
 import sys
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
@@ -17,6 +18,12 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Setup logging first
+from utils.logger import setup_logging
+log_level = os.getenv("LOG_LEVEL", "INFO")
+setup_logging(log_level=log_level)
+logger = logging.getLogger(__name__)
 
 # Import local modules
 from models.schemas import (
@@ -42,23 +49,23 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
-    print("🚀 Starting DeepResearch Platform backend...")
+    logger.info("🚀 Starting DeepResearch Platform backend...")
     
     # Verify required environment variables
     required_vars = ["SERPAPI_KEY"]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
     
     if missing_vars:
-        print(f"⚠️  Warning: Missing environment variables: {', '.join(missing_vars)}")
+        logger.warning(f"⚠️  Missing environment variables: {', '.join(missing_vars)}")
     
     # Initialize cache
     cache = get_cache()
-    print(f"✅ Cache initialized (type: {type(cache).__name__})")
+    logger.info(f"✅ Cache initialized (type: {type(cache).__name__})")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down DeepResearch Platform backend...")
+    logger.info("🛑 Shutting down DeepResearch Platform backend...")
 
 
 # ==========================================
@@ -190,8 +197,8 @@ async def start_research(request: ResearchRequest):
         raise HTTPException(status_code=400, detail="API key is required")
     
     # Log request (mask API key)
-    print(f"🔍 Research request: '{query[:50]}...' using model: {request.settings.model}")
-    print(f"   API Key: {mask_api_key(request.settings.api_key)}")
+    logger.info(f"🔍 Research request: '{query[:50]}...' using model: {request.settings.model}")
+    logger.debug(f"API Key: {mask_api_key(request.settings.api_key)}")
     
     # Create workflow instance
     workflow = ResearchWorkflow(
@@ -268,8 +275,7 @@ async def get_cache_stats():
 async def generic_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
     import traceback
-    print(f"❌ Unhandled exception: {exc}")
-    traceback.print_exc()
+    logger.error(f"❌ Unhandled exception: {exc}", exc_info=True)
     
     raise HTTPException(
         status_code=500,
@@ -287,7 +293,7 @@ if __name__ == "__main__":
     host = os.getenv("BACKEND_HOST", "0.0.0.0")
     port = int(os.getenv("BACKEND_PORT", "8000"))
     
-    print(f"""
+    logger.info(f"""
     ╔══════════════════════════════════════════════════════════╗
     ║           DeepResearch Platform Backend                  ║
     ╠══════════════════════════════════════════════════════════╣

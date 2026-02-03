@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { FileText, ExternalLink, Clock, CheckCircle, BookOpen, Lightbulb, HelpCircle, BarChart3 } from 'lucide-react'
+import { FileText, ExternalLink, Clock, CheckCircle, BookOpen, Lightbulb, HelpCircle, BarChart3, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useResearchStore } from '@/stores/researchStore'
@@ -10,20 +10,27 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function ReportViewer() {
   const [activeTab, setActiveTab] = useState<'report' | 'sources'>('report')
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   
-  const { report, sources, isResearching } = useResearchStore()
+  const { report, sources, processData } = useResearchStore()
+  const { streamingContents } = processData
+  
+  // 获取合成阶段的流式内容
+  const synthesisContent = streamingContents.find(c => c.stage === 'synthesis')
+  
+  // 自动滚动到底部
+  useEffect(() => {
+    if (scrollContainerRef.current && synthesisContent?.isStreaming) {
+      const container = scrollContainerRef.current
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  }, [synthesisContent?.content, synthesisContent?.isStreaming])
 
-  if (isResearching && !report) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-        <div className="animate-pulse text-6xl mb-4">📊</div>
-        <h3 className="text-lg font-medium">正在生成深度研究报告...</h3>
-        <p className="text-sm mt-2">AI 正在分析多个来源并综合信息，请稍候</p>
-      </div>
-    )
-  }
-
-  if (!report) {
+  // 如果没有报告且没有正在合成的内容，显示空状态
+  if (!report && !synthesisContent) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
         <FileText className="h-16 w-16 mb-4 opacity-50" />
@@ -35,7 +42,7 @@ export function ReportViewer() {
     )
   }
 
-  const { rawContent } = report.report || {}
+  const rawContent = report?.report?.rawContent || ''
 
   // Parse report sections from raw content
   const parseReportSections = (content: string) => {
@@ -69,7 +76,7 @@ export function ReportViewer() {
     return sections
   }
 
-  const reportSections = parseReportSections(rawContent || '')
+  const reportSections = parseReportSections(rawContent)
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
@@ -77,9 +84,9 @@ export function ReportViewer() {
       <div className="border-b px-4 py-3 bg-muted/30">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">{report.query}</h2>
+            <h2 className="text-lg font-semibold">{report?.query || synthesisContent?.title || '研究报告'}</h2>
             <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-              {report.durationMs && (
+              {report?.durationMs && (
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   研究耗时: {formatDuration(report.durationMs)}
@@ -89,10 +96,20 @@ export function ReportViewer() {
                 <BookOpen className="h-3.5 w-3.5" />
                 参考来源: {sources?.length || 0} 个
               </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                研究完成
-              </span>
+              {report ? (
+                <span className="flex items-center gap-1">
+                  <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                  研究完成
+                </span>
+              ) : synthesisContent?.isStreaming ? (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                  </span>
+                  正在生成报告...
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -125,12 +142,39 @@ export function ReportViewer() {
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" ref={scrollContainerRef}>
         <div className="p-6 max-w-4xl mx-auto">
           {activeTab === 'report' ? (
             <div className="space-y-6">
+              {/* 实时生成中的报告内容 */}
+              {!report && synthesisContent && (
+                <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-blue-600 animate-pulse" />
+                      正在生成研究报告
+                      {synthesisContent.isStreaming && (
+                        <span className="text-xs font-normal text-muted-foreground ml-2">
+                          实时输出中...
+                        </span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-sm dark:prose-invert max-w-none markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {synthesisContent.content}
+                      </ReactMarkdown>
+                      {synthesisContent.isStreaming && (
+                        <span className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-0.5"></span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               {/* Executive Summary Card */}
-              {reportSections['📌 执行摘要'] && (
+              {report && reportSections['📌 执行摘要'] && (
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -149,7 +193,7 @@ export function ReportViewer() {
               )}
 
               {/* Research Methodology */}
-              {reportSections['🔍 研究方法与数据来源'] && (
+              {report && reportSections['🔍 研究方法与数据来源'] && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -168,7 +212,7 @@ export function ReportViewer() {
               )}
 
               {/* Key Findings */}
-              {reportSections['📊 核心发现'] && (
+              {report && reportSections['📊 核心发现'] && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -187,7 +231,7 @@ export function ReportViewer() {
               )}
 
               {/* Detailed Analysis */}
-              {reportSections['📈 详细分析'] && (
+              {report && reportSections['📈 详细分析'] && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -206,7 +250,7 @@ export function ReportViewer() {
               )}
 
               {/* Viewpoints Comparison */}
-              {reportSections['⚖️ 观点对比与争议分析'] && (
+              {report && reportSections['⚖️ 观点对比与争议分析'] && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -225,7 +269,7 @@ export function ReportViewer() {
               )}
 
               {/* Open Questions */}
-              {reportSections['❓ 未解问题与研究缺口'] && (
+              {report && reportSections['❓ 未解问题与研究缺口'] && (
                 <Card className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -244,7 +288,7 @@ export function ReportViewer() {
               )}
 
               {/* Full Report */}
-              {rawContent && (
+              {report && rawContent && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">完整报告</CardTitle>

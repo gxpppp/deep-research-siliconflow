@@ -5,9 +5,12 @@ Supports OpenAI-compatible APIs including SiliconFlow, OpenAI, Azure, Anthropic,
 """
 
 import os
+import logging
 import httpx
 from typing import Optional, List, Dict, Any
 from langchain_openai import ChatOpenAI
+
+logger = logging.getLogger(__name__)
 
 
 # Cache for models list to avoid repeated API calls
@@ -210,9 +213,9 @@ def get_available_models(
                 _models_cache[cache_key] = models
                 return models
         except Exception as e:
-            print(f"⚠️  Failed to fetch models from {provider} API: {e}")
-            print("   Using fallback model list")
-    
+            logger.warning(f"Failed to fetch models from {provider} API: {e}")
+            logger.info("Using fallback model list")
+
     # Fallback to hardcoded models
     fallback_models = _get_fallback_models(provider)
     _models_cache[cache_key] = fallback_models
@@ -285,10 +288,10 @@ def _fetch_models_from_api(
             
             # Sort models by priority
             models.sort(key=lambda x: _get_model_priority(x["value"], provider))
-            
-            print(f"✅ Fetched {len(models)} models from {provider} API")
+
+            logger.info(f"Fetched {len(models)} models from {provider} API")
             return models
-            
+
     except Exception as e:
         raise Exception(f"API request failed: {e}")
 

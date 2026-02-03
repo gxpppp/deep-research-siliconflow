@@ -9,6 +9,7 @@ import json
 import uuid
 import time
 import asyncio
+import logging
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,8 @@ from tools.scrape import format_scraped_content_for_llm
 from tools.pdf import format_pdf_content_for_llm
 from models.schemas import ResearchStatus, ToolCall, ToolResult, SSEEvent
 from utils.datetime_utils import inject_time_to_system_prompt, format_time_for_search_query
+
+logger = logging.getLogger(__name__)
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -76,6 +79,22 @@ class ResearchWorkflow:
         self.search_analyses: List[Dict[str, Any]] = []
         self.extracted_facts: List[Dict[str, Any]] = []
         self.max_iterations = 3  # Max 3 iterations to balance quality and speed
+        self.quality_evaluations: List[Dict[str, Any]] = []  # Track quality evaluations
+        self.quality_threshold = 60  # Minimum score to stop searching (0-100)
+        self.target_quality_score = 80  # Target score for excellent results
+        
+    def _load_quality_evaluation_prompt(self) -> str:
+        """Load quality evaluation prompt from file."""
+        prompt_path = Path(__file__).parent.parent / "prompts" / "quality_evaluation_prompt.txt"
+        if prompt_path.exists():
+            return prompt_path.read_text(encoding="utf-8")
+        return """You are a research quality evaluator. Assess search results across 4 dimensions:
+- Completeness (0-100): Coverage of key points
+- Accuracy (0-100): Credibility of facts
+- Relevance (0-100): Alignment with query
+- Timeliness (0-100): Currency of information
+
+Output JSON with overall_score and should_continue fields."""
         
     def _load_system_prompt(self) -> str:
         """Load system prompt from file and inject current time context."""
@@ -94,7 +113,170 @@ class ResearchWorkflow:
         if prompt_path.exists():
             return prompt_path.read_text(encoding="utf-8")
         return """You are a research planning expert. Generate 3-5 search queries."""
-    
+
+    def _load_planning_prompt_v2(self) -> str:
+        """Load enhanced planning prompt v2 from file."""
+        prompt_path = Path(__file__).parent.parent / "prompts" / "planning_prompt_v2.txt"
+        if prompt_path.exists():
+            return prompt_path.read_text(encoding="utf-8")
+        return self._load_planning_prompt()
+
+    def _detect_query_domain(self, query: str) -> Dict[str, Any]:
+        """
+        Detect the domain of a research query for adaptive planning.
+
+        Args:
+            query: The research query
+
+        Returns:
+            Domain information including type, confidence, and relevant dimensions
+        """
+        domains_dir = Path(__file__).parent.parent / "data" / "planning_domains"
+
+        # Load all domain configurations
+        domain_scores = {}
+
+        for domain_file in domains_dir.glob("*.json"):
+            try:
+                with open(domain_file, "r", encoding="utf-8") as f:
+                    domain_config = json.load(f)
+
+                domain_name = domain_config.get("domain", "")
+                keywords = domain_config.get("keywords", [])
+
+                # Calculate keyword match score
+                score = 0
+                query_lower = query.lower()
+
+                for keyword in keywords:
+                    if keyword.lower() in query_lower:
+                        score += 1
+
+                # Normalize score by keyword count
+                if keywords:
+                    domain_scores[domain_name] = {
+                        "score": score / len(keywords),
+                        "config": domain_config
+                    }
+            except Exception as e:
+                logger.warning(f"Failed to load domain config {domain_file}: {e}")
+                continue
+
+        # Find best matching domain
+        if domain_scores:
+            best_domain = max(domain_scores.items(), key=lambda x: x[1]["score"])
+            domain_name = best_domain[0]
+            confidence = best_domain[1]["score"]
+            config = best_domain[1]["config"]
+
+            # If confidence is too low, use generic domain
+            if confidence < 0.1:
+                domain_name = "general"
+                confidence = 0.5
+                config = {
+                    "name": "通用研究",
+                    "dimensions": [
+                        {"name": "背景", "aspects": ["历史", "现状"]},
+                        {"name": "现状", "aspects": ["当前情况", "主要特点"]},
+                        {"name": "趋势", "aspects": ["发展方向", "未来预测"]}
+                    ]
+                }
+
+            return {
+                "domain": domain_name,
+                "name": config.get("name", domain_name),
+                "confidence": confidence,
+                "dimensions": config.get("dimensions", []),
+                "search_patterns": config.get("search_patterns", []),
+                "source_priority": config.get("source_priority", [])
+            }
+
+        # Fallback to generic domain
+        return {
+            "domain": "general",
+            "name": "通用研究",
+            "confidence": 0.5,
+            "dimensions": [
+                {"name": "背景", "aspects": ["历史", "现状"]},
+                {"name": "现状", "aspects": ["当前情况", "主要特点"]},
+                {"name": "趋势", "aspects": ["发展方向", "未来预测"]}
+            ],
+            "search_patterns": [],
+            "source_priority": []
+        }
+
+    def _build_enhanced_planning_prompt(self, query: str) -> str:
+        """
+        Build enhanced planning prompt with domain adaptation.
+
+        Args:
+            query: The research query
+
+        Returns:
+            Enhanced planning prompt
+        """
+        # Detect domain
+        domain_info = self._detect_query_domain(query)
+
+        # Load base prompt v2
+        base_prompt = self._load_planning_prompt_v2()
+
+        # Build domain context
+        domain_context = f"""
+## 检测到的领域
+
+- **领域类型**: {domain_info['name']}
+- **置信度**: {domain_info['confidence']:.2f}
+
+## 推荐关注维度
+
+"""
+
+        for dim in domain_info.get("dimensions", [])[:5]:
+            domain_context += f"\n### {dim.get('name', '')}\n"
+            domain_context += f"- {dim.get('description', '')}\n"
+            aspects = dim.get("aspects", [])
+            if aspects:
+                domain_context += f"- 关注方面: {', '.join(aspects)}\n"
+
+        # Add source priority
+        source_priority = domain_info.get("source_priority", [])
+        if source_priority:
+            domain_context += f"\n## 推荐信息来源优先级\n\n"
+            for i, source in enumerate(source_priority[:6], 1):
+                domain_context += f"{i}. {source}\n"
+
+        # Add search patterns
+        search_patterns = domain_info.get("search_patterns", [])
+        if search_patterns:
+            domain_context += f"\n## 推荐搜索模式\n\n"
+            topic = query[:30]  # Use first 30 chars as topic
+            for pattern in search_patterns[:5]:
+                domain_context += f"- {pattern.format(topic=topic)}\n"
+
+        # Combine with base prompt
+        # Replace the placeholder in base prompt
+        from utils.datetime_utils import get_current_time_context
+        time_context = get_current_time_context()
+
+        enhanced_prompt = base_prompt.replace(
+            "{query}", query
+        ).replace(
+            "{time_context}", time_context
+        )
+
+        # Insert domain context before the output format section
+        if "## 输出格式" in enhanced_prompt:
+            parts = enhanced_prompt.split("## 输出格式")
+            enhanced_prompt = parts[0] + domain_context + "\n## 输出格式" + parts[1]
+        else:
+            enhanced_prompt += domain_context
+
+        logger.info(f"Enhanced planning prompt built for domain: {domain_info['name']} "
+                   f"(confidence: {domain_info['confidence']:.2f})")
+
+        return enhanced_prompt
+
     def _load_search_analysis_prompt(self) -> str:
         """Load search analysis prompt from file."""
         prompt_path = Path(__file__).parent.parent / "prompts" / "search_analysis_prompt.txt"
@@ -216,7 +398,46 @@ class ResearchWorkflow:
                               f"识别 {len(analysis_result.get('information_gaps', []))} 个信息缺口"
                 })
                 
-                # Stage 4: Iteration Decision
+                # Stage 4: Quality Evaluation (Self-supervision mechanism)
+                yield self._sse_event("status", {
+                    "status": ResearchStatus.ANALYZING,
+                    "stage": "质量评估",
+                    "progress": 38 + (iteration * 5),
+                    "message": f"评估搜索结果质量..."
+                })
+                
+                quality_eval = await self._evaluate_search_quality(query, iteration)
+                self.quality_evaluations.append(quality_eval)
+                
+                overall_score = quality_eval.get("overall_score", 0)
+                dimension_scores = quality_eval.get("dimension_scores", {})
+                
+                # Build quality summary
+                quality_summary = f"质量评分: {overall_score}/100 | "
+                if dimension_scores:
+                    score_details = []
+                    for dim, data in dimension_scores.items():
+                        score = data.get("score", 0) if isinstance(data, dict) else data
+                        score_details.append(f"{dim[:3]}:{score}")
+                    quality_summary += " | ".join(score_details)
+                
+                yield self._sse_event("thinking", {
+                    "content": quality_summary
+                })
+                
+                # Log quality evaluation details
+                logger.info(f"Quality evaluation recorded: score={overall_score}, "
+                           f"gaps={len(quality_eval.get('key_gaps', []))}, "
+                           f"suggestions={len(quality_eval.get('improvement_suggestions', []))}")
+                
+                # Check if quality meets target (early stopping condition)
+                if overall_score >= self.target_quality_score:
+                    yield self._sse_event("thinking", {
+                        "content": f"✅ 质量评估优秀 (得分: {overall_score})，满足停止条件"
+                    })
+                    break
+                
+                # Stage 5: Iteration Decision
                 if iteration < self.max_iterations:
                     yield self._sse_event("status", {
                         "status": ResearchStatus.ANALYZING,
@@ -225,7 +446,15 @@ class ResearchWorkflow:
                         "message": f"评估是否需要第{iteration + 1}轮搜索..."
                     })
                     
+                    # Combine quality evaluation with iteration decision
                     decision = await self._make_iteration_decision(query, iteration)
+                    
+                    # Override decision based on quality evaluation if score is very low
+                    if overall_score < self.quality_threshold:
+                        decision["should_continue"] = True
+                        decision["reasoning"] = f"质量评分 {overall_score} 低于阈值 {self.quality_threshold}，需要补充搜索。"
+                        if quality_eval.get("priority_areas"):
+                            decision["reasoning"] += f" 优先补充: {', '.join(quality_eval['priority_areas'][:2])}"
                     
                     yield self._sse_event("thinking", {
                         "content": f"迭代决策: {'继续搜索' if decision.get('should_continue') else '停止搜索'} - "
@@ -233,7 +462,21 @@ class ResearchWorkflow:
                     })
                     
                     if decision.get("should_continue", False):
-                        additional_queries = decision.get("next_search_plan", {}).get("search_queries", [])
+                        # Use quality evaluation suggestions if available
+                        additional_queries = []
+                        if quality_eval.get("improvement_suggestions"):
+                            # Convert suggestions to queries
+                            for suggestion in quality_eval["improvement_suggestions"][:2]:
+                                additional_queries.append({
+                                    "query": f"{query} {suggestion}",
+                                    "purpose": suggestion,
+                                    "priority": 1
+                                })
+                        
+                        # Fallback to iteration decision queries
+                        if not additional_queries:
+                            additional_queries = decision.get("next_search_plan", {}).get("search_queries", [])
+                        
                         if additional_queries:
                             query_strings = [q.get("query", "") for q in additional_queries[:3]]
                             yield self._sse_event("status", {
@@ -333,7 +576,7 @@ class ResearchWorkflow:
             
             # Parse report
             report = self._parse_report(report_content)
-            report["rawContent"] = report_content
+            report["raw_content"] = report_content
             
             # Calculate duration
             duration_ms = int((time.time() - start_time) * 1000)
@@ -443,7 +686,7 @@ class ResearchWorkflow:
         """Extract search queries from LLM response."""
         # Handle empty or None content
         if not content or not content.strip():
-            print("Planning warning: Empty content received, using fallback query")
+            logger.warning("Planning: Empty content received, using fallback query")
             return [fallback_query]
         
         try:
@@ -457,7 +700,7 @@ class ResearchWorkflow:
             json_content = json_content.strip()
             
             if not json_content:
-                print("Planning warning: Empty content after extraction, using fallback query")
+                logger.warning("Planning: Empty content after extraction, using fallback query")
                 return [fallback_query]
             
             search_queries = json.loads(json_content)
@@ -470,9 +713,9 @@ class ResearchWorkflow:
                 return search_queries[:5]
             
         except json.JSONDecodeError as e:
-            print(f"Planning JSON decode error: {e}, content: {content[:200]}...")
+            logger.error(f"Planning JSON decode error: {e}, content: {content[:200]}...")
         except Exception as e:
-            print(f"Planning error: {type(e).__name__}: {e}")
+            logger.error(f"Planning error: {type(e).__name__}: {e}")
         
         return [fallback_query]
     
@@ -495,8 +738,8 @@ class ResearchWorkflow:
             response = await self.llm.ainvoke(messages)
             content = response.content
             
-            # Debug: print raw response
-            print(f"Planning response raw content: {content[:500]}...")
+            # Debug: log raw response
+            logger.debug(f"Planning response raw content: {content[:500]}...")
             
             # Extract JSON from response
             if "```json" in content:
@@ -505,11 +748,11 @@ class ResearchWorkflow:
                 content = content.split("```")[1].split("```")[0]
             
             content = content.strip()
-            print(f"Planning extracted content: {content[:500]}...")
+            logger.debug(f"Planning extracted content: {content[:500]}...")
             
             # Handle empty content
             if not content:
-                print("Planning error: Empty content after extraction")
+                logger.error("Planning: Empty content after extraction")
                 return [query]
             
             search_queries = json.loads(content)
@@ -519,12 +762,12 @@ class ResearchWorkflow:
                     search_queries.insert(0, query)
                 return search_queries[:5]
             else:
-                print(f"Planning error: Expected list, got {type(search_queries)}")
+                logger.error(f"Planning: Expected list, got {type(search_queries)}")
             
         except json.JSONDecodeError as e:
-            print(f"Planning JSON decode error: {e}, content: {content[:200] if 'content' in locals() else 'N/A'}...")
+            logger.error(f"Planning JSON decode error: {e}, content: {content[:200] if 'content' in locals() else 'N/A'}...")
         except Exception as e:
-            print(f"Planning error: {type(e).__name__}: {e}, falling back to original query")
+            logger.error(f"Planning error: {type(e).__name__}: {e}, falling back to original query")
         
         return [query]
     
@@ -590,8 +833,8 @@ class ResearchWorkflow:
                 })
         
         if failed_queries:
-            print(f"⚠️ {len(failed_queries)}/{len(queries)} 个搜索查询失败")
-        print(f"✅ 成功获取 {len(self.all_search_results)} 条搜索结果")
+            logger.warning(f"⚠️ {len(failed_queries)}/{len(queries)} 个搜索查询失败")
+        logger.info(f"✅ 成功获取 {len(self.all_search_results)} 条搜索结果")
     
     async def _analyze_search_results(
         self, 
@@ -654,7 +897,7 @@ class ResearchWorkflow:
             return analysis_result
             
         except Exception as e:
-            print(f"Search analysis error: {e}")
+            logger.error(f"Search analysis error: {e}", exc_info=True)
             # Return default result
             return {
                 "extracted_facts": [],
@@ -713,7 +956,7 @@ class ResearchWorkflow:
             return decision_result
             
         except Exception as e:
-            print(f"Iteration decision error: {e}")
+            logger.error(f"Iteration decision error: {e}", exc_info=True)
             # Default to stopping if decision fails
             return {
                 "decision": {
@@ -726,6 +969,112 @@ class ResearchWorkflow:
                     "information_quality": "medium"
                 },
                 "next_search_plan": {}
+            }
+    
+    async def _evaluate_search_quality(
+        self,
+        query: str,
+        current_iteration: int
+    ) -> Dict[str, Any]:
+        """
+        Evaluate the quality of search results across multiple dimensions.
+        
+        Args:
+            query: Original research query
+            current_iteration: Current iteration number
+            
+        Returns:
+            Quality evaluation result with scores and recommendations
+        """
+        evaluation_prompt_template = self._load_quality_evaluation_prompt()
+        
+        # Build context for evaluation
+        completed_searches = []
+        for idx, result in enumerate(self.all_search_results, 1):
+            completed_searches.append(
+                f"{idx}. {result.get('title', '')} ({result.get('source', '')})"
+            )
+        
+        # Get latest analysis
+        latest_analysis = self.search_analyses[-1] if self.search_analyses else {}
+        
+        # Build collected facts summary
+        facts_summary = []
+        for fact in self.extracted_facts[:15]:  # Limit to top 15 facts
+            fact_text = fact.get('fact', '') if isinstance(fact, dict) else str(fact)
+            facts_summary.append(fact_text[:100])  # Truncate long facts
+        
+        # Use replace instead of format to avoid issues with JSON braces
+        evaluation_prompt = evaluation_prompt_template.replace(
+            "{query}", query
+        ).replace(
+            "{current_iteration}", str(current_iteration)
+        ).replace(
+            "{max_iterations}", str(self.max_iterations)
+        ).replace(
+            "{completed_searches}", "\n".join(completed_searches[:20])
+        ).replace(
+            "{collected_facts}", json.dumps(facts_summary, ensure_ascii=False)
+        ).replace(
+            "{previous_analysis}", json.dumps({
+                "key_entities": latest_analysis.get("key_entities", []),
+                "information_gaps": latest_analysis.get("information_gaps", []),
+                "suggested_searches": latest_analysis.get("suggested_searches", [])
+            }, ensure_ascii=False)
+        )
+        
+        try:
+            messages = [
+                SystemMessage(content="你是严格的研究质量评估专家，擅长多维度评估搜索结果的完整性和可靠性。"),
+                HumanMessage(content=evaluation_prompt)
+            ]
+            
+            response = await self.llm.ainvoke(messages, max_tokens=2000)
+            content = response.content
+            
+            # Extract JSON from response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            evaluation_result = json.loads(content.strip())
+            
+            # Validate and normalize the result
+            if "overall_score" not in evaluation_result:
+                evaluation_result["overall_score"] = 50
+            
+            if "should_continue" not in evaluation_result:
+                # Auto-determine based on score
+                score = evaluation_result["overall_score"]
+                evaluation_result["should_continue"] = score < self.quality_threshold
+            
+            # Log the evaluation
+            logger.info(
+                f"Quality evaluation - Iteration {current_iteration}: "
+                f"overall_score={evaluation_result.get('overall_score')}, "
+                f"should_continue={evaluation_result.get('should_continue')}"
+            )
+            
+            # Log dimension scores if available
+            dimension_scores = evaluation_result.get("dimension_scores", {})
+            for dimension, data in dimension_scores.items():
+                score = data.get("score", 0) if isinstance(data, dict) else data
+                logger.debug(f"  {dimension}: {score}")
+            
+            return evaluation_result
+            
+        except Exception as e:
+            logger.error(f"Quality evaluation error: {e}", exc_info=True)
+            # Return default evaluation on error
+            return {
+                "overall_score": 50,
+                "dimension_scores": {},
+                "key_gaps": ["评估过程出错"],
+                "improvement_suggestions": ["继续搜索以获取更多数据"],
+                "should_continue": current_iteration < self.max_iterations,
+                "priority_areas": [],
+                "confidence": 0.5
             }
     
     async def _perform_deep_analysis_streaming(
@@ -797,7 +1146,7 @@ class ResearchWorkflow:
             return deep_analysis
             
         except Exception as e:
-            print(f"Deep analysis parse error: {e}")
+            logger.error(f"Deep analysis parse error: {e}", exc_info=True)
             # Return minimal result
             return {
                 "theme_decomposition": {"core_themes": [], "relationships": ""},
@@ -866,7 +1215,7 @@ class ResearchWorkflow:
             return self._parse_deep_analysis(content)
             
         except Exception as e:
-            print(f"Deep analysis error: {e}")
+            logger.error(f"Deep analysis error: {e}", exc_info=True)
             return self._parse_deep_analysis("")
     
     async def _scrape_sources_gen(
@@ -1060,19 +1409,18 @@ class ResearchWorkflow:
         
         # Parse structured report
         report = self._parse_report(content)
-        report["rawContent"] = content
+        report["raw_content"] = content
         
         return report
     
     def _parse_report(self, content: str) -> Dict[str, Any]:
         """Parse markdown report into structured sections."""
-        # Use camelCase to match frontend TypeScript interfaces
         sections = {
             "summary": "",
-            "researchPath": [],
-            "keyFindings": [],
-            "multiDimensionalAnalysis": {},
-            "openQuestions": [],
+            "research_path": [],
+            "key_findings": [],
+            "multi_dimensional_analysis": {},
+            "open_questions": [],
             "references": []
         }
         
@@ -1085,13 +1433,13 @@ class ResearchWorkflow:
             if line.startswith('## 📌 核心摘要') or line.startswith('## 📌 执行摘要'):
                 current_section = "summary"
             elif line.startswith('## 🔍 研究路径') or line.startswith('## 🔍 研究方法与数据来源'):
-                current_section = "researchPath"
+                current_section = "research_path"
             elif line.startswith('## 💡 关键发现') or line.startswith('## 💡 核心发现'):
-                current_section = "keyFindings"
+                current_section = "key_findings"
             elif line.startswith('## ⚖️ 多维分析') or line.startswith('## 📈 详细分析'):
-                current_section = "multiDimensionalAnalysis"
+                current_section = "multi_dimensional_analysis"
             elif line.startswith('## ❓ 未解问题') or line.startswith('## ❓ 未解问题与研究缺口'):
-                current_section = "openQuestions"
+                current_section = "open_questions"
             elif line.startswith('## 📚 参考文献') or line.startswith('## 📚 参考来源'):
                 current_section = "references"
             elif line.startswith('##'):
@@ -1099,15 +1447,15 @@ class ResearchWorkflow:
             elif line and current_section:
                 if current_section == "summary":
                     sections["summary"] += line + " "
-                elif current_section == "researchPath":
+                elif current_section == "research_path":
                     if line.startswith('- ') or line[0].isdigit():
-                        sections["researchPath"].append(line.lstrip('- ').lstrip('0123456789. '))
-                elif current_section == "keyFindings":
+                        sections["research_path"].append(line.lstrip('- ').lstrip('0123456789. '))
+                elif current_section == "key_findings":
                     if line.startswith('- ') or line.startswith('• '):
-                        sections["keyFindings"].append(line.lstrip('- •'))
-                elif current_section == "openQuestions":
+                        sections["key_findings"].append(line.lstrip('- •'))
+                elif current_section == "open_questions":
                     if line.startswith('- ') or line.startswith('• '):
-                        sections["openQuestions"].append(line.lstrip('- •'))
+                        sections["open_questions"].append(line.lstrip('- •'))
                 elif current_section == "references":
                     if line.startswith('[') and ']' in line:
                         sections["references"].append(line)
@@ -1206,7 +1554,7 @@ class ResearchWorkflow:
             })
             
         except Exception as e:
-            print(f"Streaming error in {stage}: {e}")
+            logger.error(f"Streaming error in {stage}: {e}", exc_info=True)
             # Send error event
             yield self._sse_event("content_complete", {
                 "id": content_id,
