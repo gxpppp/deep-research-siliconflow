@@ -688,13 +688,94 @@ class ResearchWorkflow:
                 "next_search_plan": {}
             }
     
-    async def _perform_deep_analysis(self, query: str) -> Dict[str, Any]:
-        """Perform comprehensive deep analysis of all information."""
+    async def _perform_deep_analysis_streaming(
+        self, 
+        query: str
+    ) -> AsyncGenerator[str, None]:
+        """Perform comprehensive deep analysis with streaming output."""
         deep_analysis_prompt_template = self._load_deep_analysis_prompt()
         
         # Build comprehensive context from all sources
         context_parts = []
-        for idx, result in enumerate(self.all_search_results[:20], 1):  # Analyze top 20 results
+        for idx, result in enumerate(self.all_search_results[:20], 1):
+            context_parts.append(
+                f"【来源 {idx}】{result.get('title', '')}\n"
+                f"来源网站: {result.get('source', 'Unknown')}\n"
+                f"URL: {result.get('link', '')}\n"
+                f"发布日期: {result.get('date', 'Unknown')}\n"
+                f"内容摘要: {result.get('snippet', '')}\n"
+            )
+        
+        all_sources = "\n\n".join(context_parts)
+        
+        # Build search analyses summary
+        search_analyses_summary = []
+        for idx, analysis in enumerate(self.search_analyses, 1):
+            search_analyses_summary.append(
+                f"第{idx}轮分析:\n"
+                f"- 提取事实: {len(analysis.get('extracted_facts', []))}\n"
+                f"- 关键实体: {', '.join([e.get('name', '') for e in analysis.get('key_entities', [])[:5]])}\n"
+                f"- 信息缺口: {', '.join(analysis.get('information_gaps', [])[:3])}"
+            )
+        
+        deep_analysis_prompt = deep_analysis_prompt_template.format(
+            query=query,
+            all_sources=all_sources,
+            search_analyses="\n\n".join(search_analyses_summary)
+        )
+
+        messages = [
+            SystemMessage(content="你是资深的行业研究分析师，擅长发现隐藏的模式、趋势和洞察。"),
+            HumanMessage(content=deep_analysis_prompt)
+        ]
+        
+        # Stream the analysis
+        async for event in self._stream_llm_response(
+            messages,
+            stage="deep_analysis",
+            title="📊 深度分析中...",
+            max_tokens=6000
+        ):
+            yield event
+    
+    def _parse_deep_analysis(self, content: str) -> Dict[str, Any]:
+        """Parse deep analysis result from content."""
+        try:
+            # Extract JSON from response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            deep_analysis = json.loads(content.strip())
+            return deep_analysis
+            
+        except Exception as e:
+            print(f"Deep analysis parse error: {e}")
+            # Return minimal result
+            return {
+                "theme_decomposition": {"core_themes": [], "relationships": ""},
+                "multi_perspective_analysis": {},
+                "causal_analysis": {"drivers": [], "causal_chains": []},
+                "comparative_analysis": {"comparisons": []},
+                "key_findings": {
+                    "core_insights": [],
+                    "important_trends": [],
+                    "counter_intuitive_findings": []
+                },
+                "confidence_assessment": {
+                    "overall_confidence": "low",
+                    "uncertainties": [f"分析过程出错: {str(e)}"]
+                }
+            }
+    
+    async def _perform_deep_analysis(self, query: str) -> Dict[str, Any]:
+        """Perform comprehensive deep analysis of all information (non-streaming)."""
+        deep_analysis_prompt_template = self._load_deep_analysis_prompt()
+        
+        # Build comprehensive context from all sources
+        context_parts = []
+        for idx, result in enumerate(self.all_search_results[:20], 1):
             context_parts.append(
                 f"【来源 {idx}】{result.get('title', '')}\n"
                 f"来源网站: {result.get('source', 'Unknown')}\n"
@@ -730,33 +811,11 @@ class ResearchWorkflow:
             response = await self.llm.ainvoke(messages, max_tokens=6000)
             content = response.content
             
-            # Extract JSON from response
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-            
-            deep_analysis = json.loads(content.strip())
-            return deep_analysis
+            return self._parse_deep_analysis(content)
             
         except Exception as e:
             print(f"Deep analysis error: {e}")
-            # Return minimal result
-            return {
-                "theme_decomposition": {"core_themes": [], "relationships": ""},
-                "multi_perspective_analysis": {},
-                "causal_analysis": {"drivers": [], "causal_chains": []},
-                "comparative_analysis": {"comparisons": []},
-                "key_findings": {
-                    "core_insights": [],
-                    "important_trends": [],
-                    "counter_intuitive_findings": []
-                },
-                "confidence_assessment": {
-                    "overall_confidence": "low",
-                    "uncertainties": [f"分析过程出错: {str(e)}"]
-                }
-            }
+            return self._parse_deep_analysis("")
     
     async def _scrape_sources_gen(
         self, 
