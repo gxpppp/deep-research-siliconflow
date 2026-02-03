@@ -1,0 +1,78 @@
+[13:52:15] [INFO] 开始研究: "量子计算在药物研发中的应用"
+{
+  "query": "量子计算在药物研发中的应用",
+  "settings": {
+    "apiKey": "***",
+    "model": "deepseek-ai/DeepSeek-V3.2",
+    "searchDays": 30,
+    "maxResults": 10,
+    "enablePdf": true,
+    "language": "zh"
+  }
+}
+
+[13:52:15] [INFO] [规划] 正在分析查询并制定研究计划...
+{
+  "progress": 10,
+  "status": "planning"
+}
+
+[13:52:21] [INFO] [搜索] 执行 5 个搜索查询...
+{
+  "progress": 25,
+  "status": "searching"
+}
+
+[13:52:21] [TOOL] 调用工具: undefined
+
+[13:52:28] [ERROR] 工具 undefined 执行失败: HTTP error 401: {
+  "error": "Invalid API key. Your API key should be here: https://serpapi.com/manage-api-key"
+}
+
+[13:52:29] [TOOL] 调用工具: undefined
+
+[13:52:36] [ERROR] 工具 undefined 执行失败: HTTP error 401: {
+  "error": "Invalid API key. Your API key should be here: https://serpapi.com/manage-api-key"
+}
+
+[13:52:36] [TOOL] 调用工具: undefined
+
+[13:52:44] [ERROR] 工具 undefined 执行失败: HTTP error 401: {
+  "error": "Invalid API key. Your API key should be here: https://serpapi.com/manage-api-key"
+}
+
+[13:52:45] [TOOL] 调用工具: undefined
+
+[13:52:53] [ERROR] 工具 undefined 执行失败: HTTP error 401: {
+  "error": "Invalid API key. Your API key should be here: https://serpapi.com/manage-api-key"
+}
+
+[13:52:54] [TOOL] 调用工具: undefined
+
+[13:53:00] [ERROR] 工具 undefined 执行失败: HTTP error 401: {
+  "error": "Invalid API key. Your API key should be here: https://serpapi.com/manage-api-key"
+}
+
+[13:53:00] [INFO] [分析] 正在深度分析 0 个来源...
+{
+  "progress": 50,
+  "status": "analyzing"
+}
+
+[13:53:00] [INFO] [总结] 正在综合分析和生成报告...
+{
+  "progress": 75,
+  "status": "synthesizing"
+}
+
+[13:53:47] [INFO] [完成] 研究完成！
+{
+  "progress": 100,
+  "status": "completed"
+}
+
+[13:53:47] [SUCCESS] 研究完成！耗时 92.0 秒
+{
+  "durationMs": 91984,
+  "sourcesCount": 0
+}

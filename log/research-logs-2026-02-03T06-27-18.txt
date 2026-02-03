@@ -1,0 +1,98 @@
+[14:17:30] [INFO] 开始研究: "2024年人工智能芯片市场发展趋势"
+{
+  "query": "2024年人工智能芯片市场发展趋势",
+  "settings": {
+    "apiKey": "***",
+    "model": "deepseek-ai/DeepSeek-V3.2",
+    "searchDays": 30,
+    "maxResults": 10,
+    "enablePdf": true,
+    "language": "zh"
+  }
+}
+
+[14:17:31] [INFO] [规划] 正在分析查询并制定研究计划...
+{
+  "progress": 10,
+  "status": "planning"
+}
+
+[14:17:41] [INFO] [搜索] 执行 5 个搜索查询...
+{
+  "progress": 25,
+  "status": "searching"
+}
+
+[14:17:41] [TOOL] 调用工具: search_web
+2024年人工智能芯片市场发展趋势
+
+[14:18:01] [RESULT] 工具 search_web 执行成功 (10 条结果)
+
+[14:18:01] [TOOL] 调用工具: search_web
+2024年人工智能芯片市场规模与增长率预测
+
+[14:18:16] [RESULT] 工具 search_web 执行成功 (10 条结果)
+
+[14:18:16] [TOOL] 调用工具: search_web
+2024年全球AI芯片技术发展趋势：GPU、ASIC、NPU
+
+[14:18:26] [RESULT] 工具 search_web 执行成功 (10 条结果)
+
+[14:18:26] [TOOL] 调用工具: search_web
+2024年中国人工智能芯片市场竞争格局与主要厂商分析
+
+[14:18:38] [RESULT] 工具 search_web 执行成功 (10 条结果)
+
+[14:18:38] [TOOL] 调用工具: search_web
+2024-2025年AI芯片在数据中心、自动驾驶、边缘计算等应用领域发展前景
+
+[14:18:54] [RESULT] 工具 search_web 执行成功 (10 条结果)
+
+[14:18:54] [INFO] [分析] 正在深度分析 43 个来源...
+{
+  "progress": 50,
+  "status": "analyzing"
+}
+
+[14:18:54] [TOOL] 调用工具: scrape_url
+https://blog.csdn.net/duozhishidai/article/details/86607783
+
+[14:19:39] [RESULT] 工具 scrape_url 执行成功 
+
+[14:19:39] [TOOL] 调用工具: scrape_url
+https://www.52by.com/article/201821
+
+[14:20:05] [RESULT] 工具 scrape_url 执行成功 
+
+[14:20:06] [TOOL] 调用工具: scrape_url
+https://www.elecfans.com/rengongzhineng/993449.html
+
+[14:20:42] [RESULT] 工具 scrape_url 执行成功 
+
+[14:20:42] [TOOL] 调用工具: scrape_url
+https://36kr.com/p/3320331235321353
+
+[14:20:58] [RESULT] 工具 scrape_url 执行成功 
+
+[14:20:58] [TOOL] 调用工具: scrape_url
+https://www.woshipm.com/ai/993918.html
+
+[14:21:07] [RESULT] 工具 scrape_url 执行成功 
+
+[14:21:07] [INFO] [总结] 正在综合分析和生成报告...
+{
+  "progress": 75,
+  "status": "synthesizing"
+}
+
+[14:22:18] [INFO] [完成] 研究完成！
+{
+  "progress": 100,
+  "status": "completed"
+}
+
+[14:22:18] [SUCCESS] 研究完成！耗时 287.0 秒
+{
+  "durationMs": 286970,
+  "sourcesCount": 5
+}
