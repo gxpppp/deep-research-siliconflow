@@ -94,6 +94,7 @@ def create_llm(
         "base_url": final_base_url,
         "temperature": temperature,
         "max_tokens": max_tokens,
+        "streaming": streaming,
     }
     
     # Add provider-specific configurations

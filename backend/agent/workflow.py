@@ -57,6 +57,7 @@ class ResearchWorkflow:
         self.api_key = api_key
         self.model = model
         self.llm = create_llm(api_key=api_key, model=model)
+        self.streaming_llm = create_llm(api_key=api_key, model=model, streaming=True)
         
         # Load system prompt
         self.system_prompt = self._load_system_prompt()
@@ -142,8 +143,27 @@ class ResearchWorkflow:
         })
         
         try:
-            # Generate initial search queries
-            search_queries = await self._plan_research(query)
+            # Stage 1: Planning with streaming
+            # Generate initial search queries with streaming output
+            search_queries = []
+            async for event in self._plan_research_streaming(query):
+                yield event
+                # Capture planning complete event to get queries
+                if 'event: planning_complete' in event:
+                    try:
+                        lines = event.strip().split('\n')
+                        for line in lines:
+                            if line.startswith('data: '):
+                                data = json.loads(line[6:])
+                                search_queries = data.get('queries', [query])
+                                break
+                    except:
+                        pass
+            
+            # Fallback if no queries extracted
+            if not search_queries:
+                search_queries = [query]
+            
             yield self._sse_event("status", {
                 "status": ResearchStatus.SEARCHING,
                 "stage": "搜索",
@@ -316,8 +336,91 @@ class ResearchWorkflow:
             return self.all_search_results
         return self.all_search_results
     
+    async def _plan_research_streaming(
+        self, 
+        query: str
+    ) -> AsyncGenerator[str, None]:
+        """
+        Plan research strategy with streaming output.
+        Yields SSE events and returns search queries.
+        """
+        planning_prompt_template = self._load_planning_prompt()
+        
+        planning_prompt = f"""{planning_prompt_template}
+
+用户查询："{query}"
+
+请基于以上角色设定和示例，为该查询生成搜索子查询。必须返回 JSON 数组格式。"""
+
+        messages = [
+            SystemMessage(content="你是研究规划专家，擅长将复杂查询分解为高效的搜索策略。"),
+            HumanMessage(content=planning_prompt)
+        ]
+        
+        # Stream the planning response
+        accumulated_content = ""
+        async for event in self._stream_llm_response(
+            messages, 
+            stage="planning",
+            title="🔍 正在制定研究计划...",
+            max_tokens=2000
+        ):
+            yield event
+            # Extract accumulated content from complete event
+            if '"event: content_complete"' in event or 'event: content_complete' in event:
+                try:
+                    # Parse the event to get content
+                    lines = event.strip().split('\n')
+                    for line in lines:
+                        if line.startswith('data: '):
+                            data = json.loads(line[6:])
+                            accumulated_content = data.get('content', '')
+                            break
+                except:
+                    pass
+        
+        # Parse search queries from accumulated content
+        search_queries = self._extract_search_queries(accumulated_content, query)
+        
+        # Yield planning complete event with queries
+        yield self._sse_event("planning_complete", {
+            "queries": search_queries,
+            "strategy": accumulated_content[:500] if len(accumulated_content) > 500 else accumulated_content
+        })
+        
+        return search_queries
+    
+    def _extract_search_queries(self, content: str, fallback_query: str) -> List[str]:
+        """Extract search queries from LLM response."""
+        try:
+            # Extract JSON from response
+            json_content = content
+            if "```json" in content:
+                json_content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                json_content = content.split("```")[1].split("```")[0]
+            
+            json_content = json_content.strip()
+            
+            if not json_content:
+                return [fallback_query]
+            
+            search_queries = json.loads(json_content)
+            
+            if isinstance(search_queries, list):
+                if fallback_query not in search_queries:
+                    search_queries.insert(0, fallback_query)
+                return search_queries[:5]
+            
+        except json.JSONDecodeError as e:
+            print(f"Planning JSON decode error: {e}")
+        except Exception as e:
+            print(f"Planning error: {type(e).__name__}: {e}")
+        
+        return [fallback_query]
+    
     async def _plan_research(self, query: str) -> List[str]:
-        """Plan research strategy by generating search queries."""
+        """Plan research strategy by generating search queries (non-streaming fallback)."""
         planning_prompt_template = self._load_planning_prompt()
         
         planning_prompt = f"""{planning_prompt_template}
@@ -831,3 +934,70 @@ class ResearchWorkflow:
     def _sse_event(self, event_type: str, data: Dict[str, Any]) -> str:
         """Format data as SSE event."""
         return f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False, cls=DateTimeEncoder)}\n\n"
+    
+    async def _stream_llm_response(
+        self,
+        messages: list,
+        stage: str,
+        title: str,
+        max_tokens: int = 4000
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream LLM response and yield content chunks as SSE events.
+        
+        Args:
+            messages: List of messages to send to LLM
+            stage: Current stage identifier
+            title: Title for this streaming content
+            max_tokens: Maximum tokens to generate
+            
+        Yields:
+            SSE-formatted event strings
+        """
+        content_id = f"{stage}_{int(time.time() * 1000)}"
+        accumulated_content = ""
+        
+        # Send start event
+        yield self._sse_event("content_start", {
+            "id": content_id,
+            "stage": stage,
+            "title": title,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        try:
+            # Stream the response
+            async for chunk in self.streaming_llm.astream(messages, max_tokens=max_tokens):
+                if chunk.content:
+                    accumulated_content += chunk.content
+                    # Send content chunk
+                    yield self._sse_event("content_chunk", {
+                        "id": content_id,
+                        "stage": stage,
+                        "chunk": chunk.content,
+                        "accumulated": accumulated_content,
+                        "timestamp": datetime.now().isoformat()
+                    })
+            
+            # Send complete event
+            yield self._sse_event("content_complete", {
+                "id": content_id,
+                "stage": stage,
+                "title": title,
+                "content": accumulated_content,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        except Exception as e:
+            print(f"Streaming error in {stage}: {e}")
+            # Send error event but still return what we have
+            yield self._sse_event("content_complete", {
+                "id": content_id,
+                "stage": stage,
+                "title": title,
+                "content": accumulated_content,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+        
+        return accumulated_content
