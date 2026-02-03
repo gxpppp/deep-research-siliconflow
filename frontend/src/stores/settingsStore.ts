@@ -43,7 +43,7 @@ const defaultSettings: Settings = {
   provider: 'siliconflow',
   customProviderUrl: '',
   apiKey: '',
-  model: 'deepseek-ai/DeepSeek-V2.5',
+  model: 'deepseek-ai/DeepSeek-V3.2',
   customModel: '',
   useCustomModel: false,
   

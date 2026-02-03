@@ -758,14 +758,44 @@ def _get_fallback_models(provider: str = 'siliconflow') -> List[Dict[str, Any]]:
             {"value": "gpt-35-turbo", "label": "GPT-3.5 Turbo", "description": "Azure GPT-3.5"},
         ]
     else:
-        # SiliconFlow fallback (original code)
+        # SiliconFlow fallback (updated with latest models)
         return [
-            {"value": "deepseek-ai/DeepSeek-V3", "label": "DeepSeek-V3", "description": "最新旗舰，671B参数"},
+            # DeepSeek 系列
+            {"value": "deepseek-ai/DeepSeek-V3.2", "label": "DeepSeek-V3.2", "description": "最新V3.2版本"},
+            {"value": "Pro/deepseek-ai/DeepSeek-V3.2", "label": "DeepSeek-V3.2 Pro", "description": "Pro版本V3.2"},
+            {"value": "deepseek-ai/DeepSeek-V3", "label": "DeepSeek-V3", "description": "V3正式版"},
+            {"value": "Pro/deepseek-ai/DeepSeek-V3", "label": "DeepSeek-V3 Pro", "description": "Pro版本V3"},
             {"value": "deepseek-ai/DeepSeek-R1", "label": "DeepSeek-R1", "description": "推理专用"},
+            {"value": "Pro/deepseek-ai/DeepSeek-R1", "label": "DeepSeek-R1 Pro", "description": "Pro版本R1"},
             {"value": "deepseek-ai/DeepSeek-V2.5", "label": "DeepSeek-V2.5", "description": "性价比之选"},
-            {"value": "Qwen/Qwen3-235B-A22B", "label": "Qwen3-235B", "description": "Qwen3旗舰"},
-            {"value": "Qwen/Qwen2.5-72B-Instruct", "label": "Qwen2.5-72B", "description": "全能旗舰"},
-            {"value": "meta-llama/Meta-Llama-3.1-70B-Instruct", "label": "Llama-3.1-70B", "description": "英文旗舰"},
+            # Qwen3 系列
+            {"value": "Qwen/Qwen3-235B-A22B-Instruct-2507", "label": "Qwen3-235B-Instruct", "description": "Qwen3旗舰Instruct"},
+            {"value": "Qwen/Qwen3-235B-A22B-Thinking-2507", "label": "Qwen3-235B-Thinking", "description": "Qwen3旗舰Thinking"},
+            {"value": "Qwen/Qwen3-32B", "label": "Qwen3-32B", "description": "Qwen3 32B"},
+            {"value": "Qwen/Qwen3-14B", "label": "Qwen3-14B", "description": "Qwen3 14B"},
+            {"value": "Qwen/Qwen3-8B", "label": "Qwen3-8B", "description": "Qwen3 8B"},
+            {"value": "Qwen/Qwen3-30B-A3B", "label": "Qwen3-30B-A3B", "description": "Qwen3 MoE"},
+            # Qwen2.5 系列
+            {"value": "Qwen/Qwen2.5-72B-Instruct", "label": "Qwen2.5-72B", "description": "Qwen2.5旗舰"},
+            {"value": "Qwen/Qwen2.5-72B-Instruct-128K", "label": "Qwen2.5-72B-128K", "description": "128K上下文"},
+            {"value": "Qwen/Qwen2.5-32B-Instruct", "label": "Qwen2.5-32B", "description": "Qwen2.5 32B"},
+            {"value": "Qwen/Qwen2.5-14B-Instruct", "label": "Qwen2.5-14B", "description": "Qwen2.5 14B"},
+            {"value": "Qwen/Qwen2.5-7B-Instruct", "label": "Qwen2.5-7B", "description": "Qwen2.5 7B"},
+            {"value": "Qwen/Qwen2.5-Coder-32B-Instruct", "label": "Qwen2.5-Coder-32B", "description": "代码专用"},
+            # GLM 系列
+            {"value": "zai-org/GLM-4.6", "label": "GLM-4.6", "description": "智谱GLM4.6"},
+            {"value": "zai-org/GLM-4.5-Air", "label": "GLM-4.5-Air", "description": "GLM4.5 Air"},
+            {"value": "THUDM/GLM-4-32B-0414", "label": "GLM-4-32B", "description": "GLM4 32B"},
+            {"value": "THUDM/GLM-4-9B-0414", "label": "GLM-4-9B", "description": "GLM4 9B"},
+            {"value": "THUDM/GLM-Z1-32B-0414", "label": "GLM-Z1-32B", "description": "GLM-Z1推理"},
+            # Kimi 系列
+            {"value": "Pro/moonshotai/Kimi-K2.5", "label": "Kimi-K2.5 Pro", "description": "Kimi K2.5 Pro"},
+            {"value": "moonshotai/Kimi-K2-Thinking", "label": "Kimi-K2-Thinking", "description": "Kimi K2推理"},
+            {"value": "Pro/moonshotai/Kimi-K2-Thinking", "label": "Kimi-K2-Thinking Pro", "description": "Kimi K2推理Pro"},
+            {"value": "moonshotai/Kimi-K2-Instruct-0905", "label": "Kimi-K2-Instruct", "description": "Kimi K2指令"},
+            # 其他
+            {"value": "Qwen/QwQ-32B", "label": "QwQ-32B", "description": "QwQ推理模型"},
+            {"value": "MiniMaxAI/MiniMax-M2", "label": "MiniMax-M2", "description": "MiniMax M2"},
         ]
 
 
