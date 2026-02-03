@@ -333,7 +333,7 @@ class ResearchWorkflow:
             
             # Parse report
             report = self._parse_report(report_content)
-            report["raw_content"] = report_content
+            report["rawContent"] = report_content
             
             # Calculate duration
             duration_ms = int((time.time() - start_time) * 1000)
@@ -1060,18 +1060,19 @@ class ResearchWorkflow:
         
         # Parse structured report
         report = self._parse_report(content)
-        report["raw_content"] = content
+        report["rawContent"] = content
         
         return report
     
     def _parse_report(self, content: str) -> Dict[str, Any]:
         """Parse markdown report into structured sections."""
+        # Use camelCase to match frontend TypeScript interfaces
         sections = {
             "summary": "",
-            "research_path": [],
-            "key_findings": [],
-            "multi_dimensional_analysis": {},
-            "open_questions": [],
+            "researchPath": [],
+            "keyFindings": [],
+            "multiDimensionalAnalysis": {},
+            "openQuestions": [],
             "references": []
         }
         
@@ -1084,13 +1085,13 @@ class ResearchWorkflow:
             if line.startswith('## 📌 核心摘要') or line.startswith('## 📌 执行摘要'):
                 current_section = "summary"
             elif line.startswith('## 🔍 研究路径') or line.startswith('## 🔍 研究方法与数据来源'):
-                current_section = "research_path"
+                current_section = "researchPath"
             elif line.startswith('## 💡 关键发现') or line.startswith('## 💡 核心发现'):
-                current_section = "key_findings"
+                current_section = "keyFindings"
             elif line.startswith('## ⚖️ 多维分析') or line.startswith('## 📈 详细分析'):
-                current_section = "multi_dimensional_analysis"
+                current_section = "multiDimensionalAnalysis"
             elif line.startswith('## ❓ 未解问题') or line.startswith('## ❓ 未解问题与研究缺口'):
-                current_section = "open_questions"
+                current_section = "openQuestions"
             elif line.startswith('## 📚 参考文献') or line.startswith('## 📚 参考来源'):
                 current_section = "references"
             elif line.startswith('##'):
@@ -1098,15 +1099,15 @@ class ResearchWorkflow:
             elif line and current_section:
                 if current_section == "summary":
                     sections["summary"] += line + " "
-                elif current_section == "research_path":
+                elif current_section == "researchPath":
                     if line.startswith('- ') or line[0].isdigit():
-                        sections["research_path"].append(line.lstrip('- ').lstrip('0123456789. '))
-                elif current_section == "key_findings":
+                        sections["researchPath"].append(line.lstrip('- ').lstrip('0123456789. '))
+                elif current_section == "keyFindings":
                     if line.startswith('- ') or line.startswith('• '):
-                        sections["key_findings"].append(line.lstrip('- •'))
-                elif current_section == "open_questions":
+                        sections["keyFindings"].append(line.lstrip('- •'))
+                elif current_section == "openQuestions":
                     if line.startswith('- ') or line.startswith('• '):
-                        sections["open_questions"].append(line.lstrip('- •'))
+                        sections["openQuestions"].append(line.lstrip('- •'))
                 elif current_section == "references":
                     if line.startswith('[') and ']' in line:
                         sections["references"].append(line)
