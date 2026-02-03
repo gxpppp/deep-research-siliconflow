@@ -30,4 +30,7 @@ export function AnalysisPanel() {
   }
 
   // Get icon for analysis step type
-  const
+  const getStepIcon = (type: AnalysisStep['type']) => {
+    switch (type) {
+      case 'insight':
+        return <Lightbulb className="w-4 h-4 text-yellow-500"
