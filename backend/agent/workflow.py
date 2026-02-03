@@ -22,6 +22,7 @@ from tools.search import format_search_results_for_llm
 from tools.scrape import format_scraped_content_for_llm
 from tools.pdf import format_pdf_content_for_llm
 from models.schemas import ResearchStatus, ToolCall, ToolResult, SSEEvent
+from utils.datetime_utils import inject_time_to_system_prompt, format_time_for_search_query
 
 
 class DateTimeEncoder(json.JSONEncoder):
