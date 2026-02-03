@@ -8,13 +8,26 @@ import { ReportViewer } from '@/components/ReportViewer'
 import { ProcessVisualizer } from '@/components/ProcessVisualizer'
 import { ResearchHistoryPanel } from '@/components/ResearchHistoryPanel'
 import { GitHubLinkWithRestore } from '@/components/GitHubLink'
+import { ModeSwitcher } from '@/components/ModeSwitcher'
+import { WorkflowEditorApp } from '@/components/workflow-editor/WorkflowEditorApp'
 import { useResearchStore } from '@/stores/researchStore'
 import { cn } from '@/lib/utils'
 
 function App() {
   const { isResearching, progress, currentStage, statusMessage, report } = useResearchStore()
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [mode, setMode] = useState<'basic' | 'advanced'>('basic')
 
+  // Advanced Mode - Workflow Editor
+  if (mode === 'advanced') {
+    return (
+      <div className="h-screen w-full">
+        <WorkflowEditorApp />
+      </div>
+    )
+  }
+
+  // Basic Mode - Original Interface
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
@@ -30,6 +43,9 @@ function App() {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Mode Switcher */}
+          <ModeSwitcher currentMode={mode} onModeChange={setMode} />
+          
           <Button
             variant="outline"
             size="sm"

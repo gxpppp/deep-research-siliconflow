@@ -37,6 +37,9 @@ from agent.llm import get_available_models
 from utils.security import sanitize_input, mask_api_key
 from utils.cache import get_cache
 
+# Import routers
+from routers import workflows
+
 
 # ==========================================
 # Application Lifecycle
@@ -111,6 +114,13 @@ async def health_check():
         version="1.0.0",
         services=services
     )
+
+
+# ==========================================
+# Workflow Routes
+# ==========================================
+
+app.include_router(workflows.router, prefix="/api")
 
 
 # ==========================================
