@@ -53,4 +53,44 @@ function App() {
         </div>
 
         {/* Middle Panel - Process Visualizer */}
-        <
+        <div className={cn(
+          "border-r flex flex-col transition-all duration-300",
+          report ? "w-[35%]" : "w-1/2"
+        )}>
+          <ProcessVisualizer />
+        </div>
+
+        {/* Right Panel - Report */}
+        <div className={cn(
+          "flex flex-col transition-all duration-300",
+          report ? "w-[35%]" : "w-0 overflow-hidden"
+        )}>
+          <ReportViewer />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-6 py-3 border-t bg-card text-xs text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <p>
+            Powered by{' '}
+            <a
+              href="https://siliconflow.cn/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              SiliconFlow
+            </a>
+            {' '}· 使用 DeepSeek & Qwen 等大模型
+          </p>
+          <p>
+            研究过程可能需要 30-120 秒，请耐心等待
+          </p>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+export default App
