@@ -10,12 +10,17 @@ from ddgs import DDGS
 import aiohttp
 import urllib.parse
 
+# Configuration
+DDGS_TIMEOUT = 30.0  # Increased timeout for DDGS
+HTML_TIMEOUT = 20.0  # Increased timeout for HTML fallback
+MAX_RETRIES = 2  # Number of retries for failed searches
+
 
 async def search_duckduckgo(
     query: str,
     max_results: int = 10,
     days: Optional[int] = None,
-    region: str = "cn-zh"
+    region: str = "wt-wt"  # Changed to worldwide for better connectivity
 ) -> Dict[str, Any]:
     """
     Search using DuckDuckGo.
@@ -28,7 +33,7 @@ async def search_duckduckgo(
               - <= 7 days: "w" (week)
               - <= 30 days: "m" (month)
               - > 30 days: "y" (year)
-        region: Region code for search results (default: "cn-zh" for Chinese)
+        region: Region code for search results (default: "wt-wt" for worldwide)
     
     Returns:
         Dict with structure:
@@ -44,24 +49,32 @@ async def search_duckduckgo(
             "error": str (optional)
         }
     """
-    # Try ddgs first with timeout
-    try:
-        result = await asyncio.wait_for(
-            _search_with_ddgs(query, max_results, days, region),
-            timeout=15.0
-        )
-        if result["success"] and result["total"] > 0:
-            return result
-    except asyncio.TimeoutError:
-        print(f"DuckDuckGo search timeout for query: {query}")
-    except Exception as e:
-        print(f"DuckDuckGo search error: {e}")
+    # Try ddgs with retries
+    for attempt in range(MAX_RETRIES):
+        try:
+            result = await asyncio.wait_for(
+                _search_with_ddgs(query, max_results, days, region),
+                timeout=DDGS_TIMEOUT
+            )
+            if result["success"] and result["total"] > 0:
+                return result
+            elif attempt < MAX_RETRIES - 1:
+                print(f"DDGS attempt {attempt + 1} returned no results, retrying...")
+                await asyncio.sleep(1)
+        except asyncio.TimeoutError:
+            print(f"DuckDuckGo search timeout (attempt {attempt + 1}/{MAX_RETRIES}) for query: {query}")
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(1)
+        except Exception as e:
+            print(f"DuckDuckGo search error (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(1)
     
     # Fallback to direct DuckDuckGo HTML scraping
     try:
         result = await asyncio.wait_for(
             _search_with_html(query, max_results),
-            timeout=10.0
+            timeout=HTML_TIMEOUT
         )
         if result["success"] and result["total"] > 0:
             return result

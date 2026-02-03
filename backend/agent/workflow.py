@@ -437,6 +437,11 @@ class ResearchWorkflow:
     
     def _extract_search_queries(self, content: str, fallback_query: str) -> List[str]:
         """Extract search queries from LLM response."""
+        # Handle empty or None content
+        if not content or not content.strip():
+            print("Planning warning: Empty content received, using fallback query")
+            return [fallback_query]
+        
         try:
             # Extract JSON from response
             json_content = content
@@ -448,17 +453,20 @@ class ResearchWorkflow:
             json_content = json_content.strip()
             
             if not json_content:
+                print("Planning warning: Empty content after extraction, using fallback query")
                 return [fallback_query]
             
             search_queries = json.loads(json_content)
             
             if isinstance(search_queries, list):
+                # Filter out empty strings
+                search_queries = [q for q in search_queries if q and str(q).strip()]
                 if fallback_query not in search_queries:
                     search_queries.insert(0, fallback_query)
                 return search_queries[:5]
             
         except json.JSONDecodeError as e:
-            print(f"Planning JSON decode error: {e}")
+            print(f"Planning JSON decode error: {e}, content: {content[:200]}...")
         except Exception as e:
             print(f"Planning error: {type(e).__name__}: {e}")
         

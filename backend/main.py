@@ -7,8 +7,9 @@ Main application entry point with SSE streaming support.
 import os
 import sys
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -109,10 +110,20 @@ async def health_check():
 # Models Endpoint
 # ==========================================
 
+class ModelsRequest(BaseModel):
+    """Request model for fetching available models."""
+    provider: str = "siliconflow"
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+
+
 @app.get("/api/models")
-async def get_models():
+@app.post("/api/models")
+async def get_models(request: Optional[ModelsRequest] = None):
     """
     Get list of available LLM models.
+    
+    Supports both GET and POST methods for compatibility.
     
     Returns:
         List of model configurations
