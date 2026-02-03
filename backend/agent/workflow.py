@@ -74,11 +74,15 @@ class ResearchWorkflow:
         self.max_iterations = 3  # Max 3 iterations to balance quality and speed
         
     def _load_system_prompt(self) -> str:
-        """Load system prompt from file."""
+        """Load system prompt from file and inject current time context."""
         prompt_path = Path(__file__).parent.parent / "prompts" / "system_prompt.txt"
         if prompt_path.exists():
-            return prompt_path.read_text(encoding="utf-8")
-        return """You are a deep research expert. Provide verified, multi-perspective analysis with citations."""
+            base_prompt = prompt_path.read_text(encoding="utf-8")
+        else:
+            base_prompt = """You are a deep research expert. Provide verified, multi-perspective analysis with citations."""
+        
+        # Inject real-time context into system prompt
+        return inject_time_to_system_prompt(base_prompt)
     
     def _load_planning_prompt(self) -> str:
         """Load planning prompt from file."""
@@ -380,14 +384,23 @@ class ResearchWorkflow:
         """
         planning_prompt_template = self._load_planning_prompt()
         
+        # Get current time for search context
+        current_time = format_time_for_search_query()
+        
         planning_prompt = f"""{planning_prompt_template}
 
 用户查询："{query}"
 
-请基于以上角色设定和示例，为该查询生成搜索子查询。必须返回 JSON 数组格式。"""
+当前时间：{current_time}
 
+请基于以上角色设定和示例，为该查询生成搜索子查询。为了获取最新的信息，建议在搜索查询中包含当前年份或时间相关关键词。
+必须返回 JSON 数组格式。"""
+
+        # Inject time context to system message
+        system_content = inject_time_to_system_prompt("你是研究规划专家，擅长将复杂查询分解为高效的搜索策略。")
+        
         messages = [
-            SystemMessage(content="你是研究规划专家，擅长将复杂查询分解为高效的搜索策略。"),
+            SystemMessage(content=system_content),
             HumanMessage(content=planning_prompt)
         ]
         
@@ -723,8 +736,11 @@ class ResearchWorkflow:
             search_analyses="\n\n".join(search_analyses_summary)
         )
 
+        # Inject time context to system message
+        system_content = inject_time_to_system_prompt("你是资深的行业研究分析师，擅长发现隐藏的模式、趋势和洞察。")
+        
         messages = [
-            SystemMessage(content="你是资深的行业研究分析师，擅长发现隐藏的模式、趋势和洞察。"),
+            SystemMessage(content=system_content),
             HumanMessage(content=deep_analysis_prompt)
         ]
         
@@ -802,8 +818,11 @@ class ResearchWorkflow:
         )
 
         try:
+            # Inject time context to system message
+            system_content = inject_time_to_system_prompt("你是资深的行业研究分析师，擅长发现隐藏的模式、趋势和洞察。")
+            
             messages = [
-                SystemMessage(content="你是资深的行业研究分析师，擅长发现隐藏的模式、趋势和洞察。"),
+                SystemMessage(content=system_content),
                 HumanMessage(content=deep_analysis_prompt)
             ]
             
@@ -922,8 +941,11 @@ class ResearchWorkflow:
 5. 融入深度分析阶段的核心洞察
 6. 使用中文撰写"""
 
+        # Inject time context to system message
+        system_content = inject_time_to_system_prompt("你是专业的深度研究报告撰写专家，擅长基于多源信息和深度分析生成高质量、结构化的研究报告。")
+        
         messages = [
-            SystemMessage(content="你是专业的深度研究报告撰写专家，擅长基于多源信息和深度分析生成高质量、结构化的研究报告。"),
+            SystemMessage(content=system_content),
             HumanMessage(content=synthesis_prompt)
         ]
         
@@ -988,8 +1010,11 @@ class ResearchWorkflow:
 5. 融入深度分析阶段的核心洞察
 6. 使用中文撰写"""
 
+        # Inject time context to system message
+        system_content = inject_time_to_system_prompt("你是专业的深度研究报告撰写专家，擅长基于多源信息和深度分析生成高质量、结构化的研究报告。")
+        
         messages = [
-            SystemMessage(content="你是专业的深度研究报告撰写专家，擅长基于多源信息和深度分析生成高质量、结构化的研究报告。"),
+            SystemMessage(content=system_content),
             HumanMessage(content=synthesis_prompt)
         ]
         
