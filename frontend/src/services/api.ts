@@ -8,13 +8,46 @@ import type { Settings, ModelConfig } from '@/types'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 /**
- * Fetch available models from backend
+ * Get API base URL based on provider settings
  */
-export async function fetchModels(): Promise<{ models: ModelConfig[]; default: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/models`)
+export function getApiBaseUrl(settings: Settings): string {
+  if (settings.provider === 'custom') {
+    return settings.customProviderUrl || API_BASE_URL
+  }
+  return API_BASE_URL
+}
+
+/**
+ * Fetch available models from provider API
+ * Supports multiple providers: siliconflow, openai, azure, anthropic, gemini, custom
+ */
+export async function fetchModels(
+  provider: string,
+  apiKey: string,
+  baseUrl?: string
+): Promise<{ models: ModelConfig[]; default: string }> {
+  // For custom providers, return empty list and let user input manually
+  if (provider === 'custom') {
+    return { models: [], default: '' }
+  }
+
+  // Use backend proxy to fetch models (to avoid CORS)
+  const response = await fetch(`${API_BASE_URL}/api/models`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      provider,
+      api_key: apiKey,
+      base_url: baseUrl,
+    }),
+  })
+
   if (!response.ok) {
     throw new Error('Failed to fetch models')
   }
+
   return response.json()
 }
 
@@ -28,16 +61,27 @@ export function startResearchStream(
   onEvent: (event: { type: string; data: unknown }) => void,
   onError: (error: Error) => void
 ): { close: () => void } {
-  // Prepare request body
+  // Prepare request body with all new parameters
   const requestBody = {
     query,
     settings: {
+      // Provider settings
+      provider: settings.provider,
+      custom_provider_url: settings.customProviderUrl,
       api_key: settings.apiKey,
-      model: settings.model,
+      model: settings.useCustomModel ? settings.customModel : settings.model,
+      
+      // Search settings
       search_days: settings.searchDays,
       max_results: settings.maxResults,
       enable_pdf: settings.enablePdf,
       language: settings.language,
+      
+      // Model parameters (new)
+      context_length: settings.contextLength,
+      max_tokens: settings.maxTokens,
+      temperature: settings.temperature,
+      enable_token_tracking: settings.enableTokenTracking,
     },
   }
 
@@ -117,4 +161,36 @@ export async function checkHealth(): Promise<{ status: string; version: string }
     throw new Error('Health check failed')
   }
   return response.json()
+}
+
+/**
+ * Validate API key for a provider
+ */
+export async function validateApiKey(
+  provider: string,
+  apiKey: string,
+  baseUrl?: string
+): Promise<{ valid: boolean; message?: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/validate-key`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider,
+        api_key: apiKey,
+        base_url: baseUrl,
+      }),
+    })
+
+    if (!response.ok) {
+      return { valid: false, message: '验证请求失败' }
+    }
+
+    const data = await response.json()
+    return { valid: data.valid, message: data.message }
+  } catch (error) {
+    return { valid: false, message: '网络错误' }
+  }
 }

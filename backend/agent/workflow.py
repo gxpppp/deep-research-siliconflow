@@ -37,12 +37,13 @@ class ResearchWorkflow:
     Multi-stage iterative research workflow orchestrator.
     
     Workflow stages:
-    1. PLANNING: LLM generates search queries
+    1. PLANNING: LLM generates initial search queries
     2. SEARCHING: Execute DuckDuckGo searches
-    3. SEARCH_ANALYSIS: LLM analyzes results, decides if more searches needed
-    4. (Optional ITERATION: More searches based on analysis)
-    5. DEEP_ANALYSIS: LLM performs comprehensive analysis
-    6. SYNTHESIS: LLM generates final structured report
+    3. SEARCH_ANALYSIS: LLM analyzes results, extracts facts, identifies gaps
+    4. ITERATION_DECISION: LLM decides if more searches needed
+    5. (Optional ITERATION: More searches based on decision)
+    6. DEEP_ANALYSIS: LLM performs comprehensive multi-dimensional analysis
+    7. SYNTHESIS: LLM generates final structured report
     """
     
     def __init__(self, api_key: str, model: Optional[str] = None):
@@ -66,7 +67,9 @@ class ResearchWorkflow:
         self.tool_results: List[ToolResult] = []
         self.sources: List[Dict[str, Any]] = []
         self.all_search_results: List[Dict[str, Any]] = []
-        self.max_iterations = 2  # Max 2 iterations to avoid too many searches
+        self.search_analyses: List[Dict[str, Any]] = []
+        self.extracted_facts: List[Dict[str, Any]] = []
+        self.max_iterations = 3  # Max 3 iterations to balance quality and speed
         
     def _load_system_prompt(self) -> str:
         """Load system prompt from file."""
@@ -87,7 +90,14 @@ class ResearchWorkflow:
         prompt_path = Path(__file__).parent.parent / "prompts" / "search_analysis_prompt.txt"
         if prompt_path.exists():
             return prompt_path.read_text(encoding="utf-8")
-        return """You are a search analysis expert. Analyze search results and decide if more searches are needed."""
+        return """You are a search analysis expert. Analyze search results and extract key information."""
+    
+    def _load_iteration_decision_prompt(self) -> str:
+        """Load iteration decision prompt from file."""
+        prompt_path = Path(__file__).parent.parent / "prompts" / "iteration_decision_prompt.txt"
+        if prompt_path.exists():
+            return prompt_path.read_text(encoding="utf-8")
+        return """You are a research strategist. Decide if more searches are needed."""
     
     def _load_deep_analysis_prompt(self) -> str:
         """Load deep analysis prompt from file."""
@@ -149,73 +159,102 @@ class ResearchWorkflow:
             async for event in self._execute_searches_gen(search_queries, search_days, max_results, 20, 35):
                 yield event
             
-            # Stage 3: Search Analysis & Iteration
-            iteration = 0
-            while iteration < self.max_iterations:
+            # Stage 3-4: Search Analysis & Iteration Decision Loop
+            iteration = 1
+            while iteration <= self.max_iterations:
+                # Analyze current search results
                 yield self._sse_event("status", {
                     "status": ResearchStatus.ANALYZING,
                     "stage": "搜索分析",
-                    "progress": 35 + (iteration * 10),
-                    "message": f"第{iteration + 1}轮: 分析搜索结果，判断是否需要补充搜索..."
+                    "progress": 35 + (iteration * 5),
+                    "message": f"第{iteration}轮: 分析搜索结果，提取关键信息..."
                 })
                 
+                # Get current iteration's search results
+                current_results = self._get_iteration_results(iteration)
+                
                 # Analyze search results
-                analysis_result = await self._analyze_search_results(query, self.all_search_results)
+                analysis_result = await self._analyze_search_results(query, current_results, iteration)
+                self.search_analyses.append(analysis_result)
+                
+                # Extract and accumulate facts
+                new_facts = analysis_result.get("extracted_facts", [])
+                self.extracted_facts.extend(new_facts)
                 
                 # Send analysis summary to console
                 yield self._sse_event("thinking", {
-                    "content": f"搜索分析: {analysis_result.get('analysis_summary', '分析完成')[:200]}..."
+                    "content": f"第{iteration}轮分析完成: 提取 {len(new_facts)} 个关键事实, "
+                              f"识别 {len(analysis_result.get('information_gaps', []))} 个信息缺口"
                 })
                 
-                # Check if more searches needed
-                if analysis_result.get("need_more_search", False) and iteration < self.max_iterations - 1:
-                    additional_queries = analysis_result.get("additional_queries", [])
-                    if additional_queries:
-                        yield self._sse_event("status", {
-                            "status": ResearchStatus.SEARCHING,
-                            "stage": "补充搜索",
-                            "progress": 40 + (iteration * 10),
-                            "message": f"需要补充搜索，执行 {len(additional_queries)} 个新查询..."
-                        })
-                        
-                        async for event in self._execute_searches_gen(additional_queries, search_days, max_results, 
-                                                                    40 + (iteration * 10), 45 + (iteration * 10)):
-                            yield event
-                        iteration += 1
-                        continue
+                # Stage 4: Iteration Decision
+                if iteration < self.max_iterations:
+                    yield self._sse_event("status", {
+                        "status": ResearchStatus.ANALYZING,
+                        "stage": "迭代决策",
+                        "progress": 40 + (iteration * 5),
+                        "message": f"评估是否需要第{iteration + 1}轮搜索..."
+                    })
+                    
+                    decision = await self._make_iteration_decision(query, iteration)
+                    
+                    yield self._sse_event("thinking", {
+                        "content": f"迭代决策: {'继续搜索' if decision.get('should_continue') else '停止搜索'} - "
+                                  f"{decision.get('reasoning', '')[:150]}..."
+                    })
+                    
+                    if decision.get("should_continue", False):
+                        additional_queries = decision.get("next_search_plan", {}).get("search_queries", [])
+                        if additional_queries:
+                            query_strings = [q.get("query", "") for q in additional_queries[:3]]
+                            yield self._sse_event("status", {
+                                "status": ResearchStatus.SEARCHING,
+                                "stage": f"第{iteration + 1}轮搜索",
+                                "progress": 45 + (iteration * 5),
+                                "message": f"执行 {len(query_strings)} 个补充查询..."
+                            })
+                            
+                            async for event in self._execute_searches_gen(
+                                query_strings, search_days, max_results, 
+                                45 + (iteration * 5), 50 + (iteration * 5)
+                            ):
+                                yield event
+                            
+                            iteration += 1
+                            continue
                 
-                break  # No more searches needed
+                break  # No more searches needed or max iterations reached
             
-            # Stage 4: Deep Analysis
+            # Stage 5: Deep Analysis
             yield self._sse_event("status", {
                 "status": ResearchStatus.ANALYZING,
                 "stage": "深度分析",
-                "progress": 55,
+                "progress": 60,
                 "message": "正在对所有信息进行深度分析..."
             })
             
-            deep_analysis = await self._perform_deep_analysis(query, self.all_search_results)
+            deep_analysis = await self._perform_deep_analysis(query)
             
             yield self._sse_event("thinking", {
-                "content": f"深度分析完成: {deep_analysis.get('executive_summary', '分析完成')[:200]}..."
+                "content": f"深度分析完成: {len(deep_analysis.get('key_findings', {}).get('core_insights', []))} 个核心洞察, "
+                          f"{len(deep_analysis.get('theme_decomposition', {}).get('core_themes', []))} 个子主题"
             })
             
-            # Stage 5: Scrape top sources for detailed content
+            # Stage 6: Scrape top sources for detailed content
             yield self._sse_event("status", {
                 "status": ResearchStatus.ANALYZING,
                 "stage": "内容抓取",
-                "progress": 70,
+                "progress": 75,
                 "message": "正在抓取关键来源的详细内容..."
             })
             
             unique_sources = self._deduplicate_sources(self.all_search_results)
-            async for event in self._scrape_sources_gen(unique_sources[:5], 70, 80):
+            async for event in self._scrape_sources_gen(unique_sources[:5], 75, 85):
                 yield event
             
             # Get scraped contents from sources
             scraped_contents = []
             for source in self.sources:
-                # Find the full content for this source
                 for result in self.all_search_results:
                     if result.get('link') == source.get('url'):
                         scraped_contents.append({
@@ -224,11 +263,11 @@ class ResearchWorkflow:
                         })
                         break
             
-            # Stage 6: Generate final report
+            # Stage 7: Generate final report
             yield self._sse_event("status", {
                 "status": ResearchStatus.SYNTHESIZING,
                 "stage": "综合总结",
-                "progress": 80,
+                "progress": 85,
                 "message": "正在生成最终研究报告..."
             })
             
@@ -253,8 +292,9 @@ class ResearchWorkflow:
                 "tool_calls": [call.dict() for call in self.tool_calls],
                 "tool_results": [result.dict() for result in self.tool_results],
                 "duration_ms": duration_ms,
-                "iterations": iteration + 1,
-                "total_searches": len(self.all_search_results)
+                "iterations": iteration,
+                "total_searches": len(self.all_search_results),
+                "total_facts": len(self.extracted_facts)
             })
             
         except asyncio.TimeoutError:
@@ -267,6 +307,14 @@ class ResearchWorkflow:
                 "status": ResearchStatus.ERROR,
                 "message": f"研究过程中出现错误: {str(e)}"
             })
+    
+    def _get_iteration_results(self, iteration: int) -> List[Dict[str, Any]]:
+        """Get search results for a specific iteration."""
+        # For simplicity, we'll track which results came from which iteration
+        # In a more complex implementation, we'd tag results with iteration number
+        if iteration == 1:
+            return self.all_search_results
+        return self.all_search_results
     
     async def _plan_research(self, query: str) -> List[str]:
         """Plan research strategy by generating search queries."""
@@ -368,9 +416,10 @@ class ResearchWorkflow:
     async def _analyze_search_results(
         self, 
         query: str, 
-        search_results: List[Dict[str, Any]]
+        search_results: List[Dict[str, Any]],
+        iteration: int
     ) -> Dict[str, Any]:
-        """Analyze search results and decide if more searches are needed."""
+        """Analyze search results and extract key information."""
         analysis_prompt_template = self._load_search_analysis_prompt()
         
         # Build context from search results
@@ -386,14 +435,21 @@ class ResearchWorkflow:
         
         context = "\n".join(context_parts)
         
-        analysis_prompt = f"""{analysis_prompt_template}
-
-原始查询："{query}"
-
-搜索结果：
-{context}
-
-请分析以上搜索结果，按要求的JSON格式输出分析结果。"""
+        # Build previous analysis context
+        previous_analysis = ""
+        if self.search_analyses:
+            prev = self.search_analyses[-1]
+            previous_analysis = f"""上一轮分析结果：
+- 提取事实数: {len(prev.get('extracted_facts', []))}
+- 信息缺口: {', '.join(prev.get('information_gaps', [])[:3])}
+- 建议搜索: {', '.join(prev.get('suggested_searches', [])[:3])}"""
+        
+        analysis_prompt = analysis_prompt_template.format(
+            query=query,
+            current_search=f"第{iteration}轮搜索",
+            search_results=context,
+            previous_analysis=previous_analysis
+        )
 
         try:
             messages = [
@@ -415,25 +471,79 @@ class ResearchWorkflow:
             
         except Exception as e:
             print(f"Search analysis error: {e}")
-            # Return default result indicating no more searches needed
+            # Return default result
             return {
-                "analysis_summary": "分析过程中出现错误，使用当前搜索结果继续",
-                "need_more_search": False,
-                "additional_queries": [],
+                "extracted_facts": [],
+                "key_entities": [],
+                "information_gaps": ["分析过程中出现错误"],
+                "suggested_searches": [],
+                "needs_more_search": False,
                 "reasoning": f"分析错误: {str(e)}"
             }
     
-    async def _perform_deep_analysis(
-        self, 
-        query: str, 
-        search_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def _make_iteration_decision(self, query: str, current_iteration: int) -> Dict[str, Any]:
+        """Decide whether to continue with more searches."""
+        decision_prompt_template = self._load_iteration_decision_prompt()
+        
+        # Build context
+        completed_searches = []
+        for idx, result in enumerate(self.all_search_results, 1):
+            completed_searches.append(f"{idx}. {result.get('title', '')} ({result.get('source', '')})")
+        
+        # Get latest analysis
+        latest_analysis = self.search_analyses[-1] if self.search_analyses else {}
+        
+        decision_prompt = decision_prompt_template.format(
+            query=query,
+            current_iteration=current_iteration,
+            max_iterations=self.max_iterations,
+            completed_searches="\n".join(completed_searches[:20]),
+            collected_facts=json.dumps(self.extracted_facts[:10], ensure_ascii=False),
+            information_gaps=json.dumps(latest_analysis.get("information_gaps", []), ensure_ascii=False),
+            previous_suggestions=json.dumps(latest_analysis.get("suggested_searches", []), ensure_ascii=False)
+        )
+
+        try:
+            messages = [
+                SystemMessage(content="你是智能研究策略师，擅长评估研究状态并制定最优搜索策略。"),
+                HumanMessage(content=decision_prompt)
+            ]
+            
+            response = await self.llm.ainvoke(messages, max_tokens=3000)
+            content = response.content
+            
+            # Extract JSON from response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            decision_result = json.loads(content.strip())
+            return decision_result
+            
+        except Exception as e:
+            print(f"Iteration decision error: {e}")
+            # Default to stopping if decision fails
+            return {
+                "decision": {
+                    "should_continue": False,
+                    "confidence": 0.5,
+                    "reasoning": f"决策过程出错，使用当前结果继续: {str(e)}"
+                },
+                "current_status": {
+                    "information_coverage": "medium",
+                    "information_quality": "medium"
+                },
+                "next_search_plan": {}
+            }
+    
+    async def _perform_deep_analysis(self, query: str) -> Dict[str, Any]:
         """Perform comprehensive deep analysis of all information."""
         deep_analysis_prompt_template = self._load_deep_analysis_prompt()
         
-        # Build comprehensive context
+        # Build comprehensive context from all sources
         context_parts = []
-        for idx, result in enumerate(search_results[:20], 1):  # Analyze top 20 results
+        for idx, result in enumerate(self.all_search_results[:20], 1):  # Analyze top 20 results
             context_parts.append(
                 f"【来源 {idx}】{result.get('title', '')}\n"
                 f"来源网站: {result.get('source', 'Unknown')}\n"
@@ -442,16 +552,23 @@ class ResearchWorkflow:
                 f"内容摘要: {result.get('snippet', '')}\n"
             )
         
-        context = "\n\n".join(context_parts)
+        all_sources = "\n\n".join(context_parts)
         
-        deep_analysis_prompt = f"""{deep_analysis_prompt_template}
-
-研究主题："{query}"
-
-已收集的所有信息：
-{context}
-
-请基于以上信息，进行全面的深度分析，按要求的JSON格式输出分析结果。"""
+        # Build search analyses summary
+        search_analyses_summary = []
+        for idx, analysis in enumerate(self.search_analyses, 1):
+            search_analyses_summary.append(
+                f"第{idx}轮分析:\n"
+                f"- 提取事实: {len(analysis.get('extracted_facts', []))}\n"
+                f"- 关键实体: {', '.join([e.get('name', '') for e in analysis.get('key_entities', [])[:5]])}\n"
+                f"- 信息缺口: {', '.join(analysis.get('information_gaps', [])[:3])}"
+            )
+        
+        deep_analysis_prompt = deep_analysis_prompt_template.format(
+            query=query,
+            all_sources=all_sources,
+            search_analyses="\n\n".join(search_analyses_summary)
+        )
 
         try:
             messages = [
@@ -475,9 +592,19 @@ class ResearchWorkflow:
             print(f"Deep analysis error: {e}")
             # Return minimal result
             return {
-                "executive_summary": "深度分析过程中出现错误",
-                "key_themes": [],
-                "key_insights": []
+                "theme_decomposition": {"core_themes": [], "relationships": ""},
+                "multi_perspective_analysis": {},
+                "causal_analysis": {"drivers": [], "causal_chains": []},
+                "comparative_analysis": {"comparisons": []},
+                "key_findings": {
+                    "core_insights": [],
+                    "important_trends": [],
+                    "counter_intuitive_findings": []
+                },
+                "confidence_assessment": {
+                    "overall_confidence": "low",
+                    "uncertainties": [f"分析过程出错: {str(e)}"]
+                }
             }
     
     async def _scrape_sources_gen(
@@ -560,11 +687,13 @@ class ResearchWorkflow:
         context = "\n\n" + "="*50 + "\n\n".join(context_parts)
         
         # Include deep analysis insights
+        key_findings = deep_analysis.get("key_findings", {})
         analysis_context = f"""
 深度分析洞察：
-- 执行摘要: {deep_analysis.get('executive_summary', '')}
-- 关键主题: {', '.join([t.get('theme', '') for t in deep_analysis.get('key_themes', [])])}
-- 核心洞察: {', '.join([i.get('insight', '') for i in deep_analysis.get('key_insights', [])])}
+- 核心主题: {', '.join([t.get('theme', '') for t in deep_analysis.get('theme_decomposition', {}).get('core_themes', [])])}
+- 核心洞察: {', '.join([i.get('insight', '') for i in key_findings.get('core_insights', [])])}
+- 重要趋势: {', '.join([t.get('trend', '') for t in key_findings.get('important_trends', [])])}
+- 整体置信度: {deep_analysis.get('confidence_assessment', {}).get('overall_confidence', 'medium')}
 """
         
         synthesis_prompt = f"""{synthesis_prompt_template}
@@ -618,19 +747,19 @@ class ResearchWorkflow:
         for line in lines:
             line = line.strip()
             
-            if line.startswith('## 📌 核心摘要'):
+            if line.startswith('## 📌 核心摘要') or line.startswith('## 📌 执行摘要'):
                 current_section = "summary"
-            elif line.startswith('## 🔍 研究路径'):
+            elif line.startswith('## 🔍 研究路径') or line.startswith('## 🔍 研究方法与数据来源'):
                 current_section = "research_path"
-            elif line.startswith('## 💡 关键发现'):
+            elif line.startswith('## 💡 关键发现') or line.startswith('## 💡 核心发现'):
                 current_section = "key_findings"
-            elif line.startswith('## ⚖️ 多维分析'):
+            elif line.startswith('## ⚖️ 多维分析') or line.startswith('## 📈 详细分析'):
                 current_section = "multi_dimensional_analysis"
-            elif line.startswith('## ❓ 未解问题'):
+            elif line.startswith('## ❓ 未解问题') or line.startswith('## ❓ 未解问题与研究缺口'):
                 current_section = "open_questions"
-            elif line.startswith('## 📚 参考文献'):
+            elif line.startswith('## 📚 参考文献') or line.startswith('## 📚 参考来源'):
                 current_section = "references"
-            elif line.startswith('## '):
+            elif line.startswith('##'):
                 current_section = None
             elif line and current_section:
                 if current_section == "summary":

@@ -1,142 +1,141 @@
-# 深度分析阶段提示词
+# 深度分析阶段
 
-## 角色
-你是一位资深的行业研究分析师。你的任务是对已收集的所有信息进行深度分析，发现隐藏的模式、趋势和洞察，形成系统性的理解。
-
-## 任务
-1. 综合所有搜索结果和前期分析
-2. 识别关键主题、模式和趋势
-3. 分析不同观点之间的关系和冲突
-4. 评估信息的可靠性和一致性
-5. 形成深度洞察和结论
+你是一个资深的研究专家和分析师。你的任务是基于已收集的所有信息和初步分析，进行深入的综合性分析，揭示深层次的洞察和规律。
 
 ## 分析维度
 
-### 1. 主题分析
-- 识别研究主题的核心概念
-- 分析主题的演变和发展
-- 探索主题间的关联性
+### 1. 主题解构
+- 将研究主题分解为核心子主题
+- 分析各子主题之间的逻辑关系
+- 识别主题的发展脉络和演变趋势
 
-### 2. 观点对比
-- 列出不同来源的主要观点
-- 分析观点的一致性和分歧
-- 评估各方论据的强弱
+### 2. 多视角分析
+- **技术视角**：技术原理、创新点、技术路线
+- **市场视角**：市场规模、竞争格局、商业模式
+- **政策视角**：监管环境、政策支持、合规要求
+- **社会视角**：社会影响、用户接受度、伦理考量
+- **未来视角**：发展趋势、潜在机会、风险挑战
 
-### 3. 趋势识别
-- 识别短期和长期趋势
-- 分析趋势的驱动因素
-- 预测可能的发展方向
+### 3. 因果关系分析
+- 识别关键驱动因素
+- 分析因果链条
+- 评估各因素的影响权重
 
-### 4. 因果分析
-- 识别关键因素和变量
-- 分析因果关系链
-- 评估不同因素的影响权重
+### 4. 对比分析
+- 不同方案/技术的对比
+- 不同时间段的演变对比
+- 不同地区/市场的差异对比
 
-### 5. 证据评估
-- 评估证据的质量和可靠性
-- 识别证据缺口和不确定性
-- 标注需要进一步验证的假设
+### 5. 关键发现提炼
+- 核心洞察（3-5个）
+- 重要趋势（2-3个）
+- 关键数据支撑
+- 反直觉的发现
 
 ## 输出格式
 
-请按以下JSON格式输出深度分析结果：
+请以结构化 JSON 格式输出深度分析结果：
 
 ```json
 {
-  "executive_summary": "执行摘要，概括核心发现和主要结论（300-400字）",
-  
-  "key_themes": [
-    {
-      "theme": "主题名称",
-      "description": "主题描述（100-150字）",
-      "supporting_evidence": ["支持证据1", "支持证据2"],
-      "related_themes": ["相关主题1", "相关主题2"]
-    }
-  ],
-  
-  "perspective_analysis": [
-    {
-      "perspective": "观点立场",
-      "sources": ["支持该观点的来源"],
-      "key_arguments": ["主要论据1", "主要论据2"],
-      "strengths": "观点的优势",
-      "weaknesses": "观点的局限性"
-    }
-  ],
-  
-  "trends": [
-    {
-      "trend": "趋势名称",
-      "timeframe": "短期/中期/长期",
-      "description": "趋势描述",
-      "driving_factors": ["驱动因素1", "驱动因素2"],
-      "implications": "趋势的影响和意义"
-    }
-  ],
-  
-  "causal_analysis": {
-    "key_factors": ["关键因素1", "关键因素2", "关键因素3"],
-    "causal_chains": [
+  "theme_decomposition": {
+    "core_themes": [
       {
-        "cause": "原因",
-        "effect": "结果",
-        "mechanism": "作用机制描述"
+        "theme": "子主题名称",
+        "description": "主题描述",
+        "importance": "high/medium/low",
+        "key_findings": ["关键发现"]
       }
     ],
-    "impact_assessment": "各因素影响权重评估"
+    "relationships": "主题间关系描述"
   },
-  
-  "evidence_quality": {
-    "high_confidence_facts": [
-      {"fact": "高可信度事实", "sources": ["来源"], "confidence": "高"}
+  "multi_perspective_analysis": {
+    "technical": {
+      "summary": "技术分析摘要",
+      "key_points": ["要点"],
+      "innovation_highlights": ["创新点"]
+    },
+    "market": {
+      "summary": "市场分析摘要",
+      "key_points": ["要点"],
+      "opportunities": ["机会"],
+      "challenges": ["挑战"]
+    },
+    "policy": {
+      "summary": "政策分析摘要",
+      "key_points": ["要点"],
+      "regulatory_status": "监管现状"
+    },
+    "social": {
+      "summary": "社会分析摘要",
+      "key_points": ["要点"],
+      "impact_assessment": "影响评估"
+    }
+  },
+  "causal_analysis": {
+    "drivers": [
+      {
+        "factor": "驱动因素",
+        "impact": "影响描述",
+        "weight": "high/medium/low"
+      }
     ],
-    "medium_confidence_claims": [
-      {"claim": "中等可信度主张", "sources": ["来源"], "limitations": "局限性"}
-    ],
-    "uncertainties": [
-      {"uncertainty": "不确定性", "reason": "原因", "needed_evidence": "需要的证据"}
+    "causal_chains": ["因果链条描述"]
+  },
+  "comparative_analysis": {
+    "comparisons": [
+      {
+        "aspect": "对比维度",
+        "comparison": "对比内容",
+        "insights": "洞察"
+      }
     ]
   },
-  
-  "key_insights": [
-    {
-      "insight": "核心洞察",
-      "explanation": "详细解释（150-200字）",
-      "supporting_data": "支持数据或证据",
-      "significance": "洞察的重要性和意义"
-    }
-  ],
-  
-  "information_gaps": [
-    {
-      "gap": "信息缺口",
-      "importance": "重要性（高/中/低）",
-      "impact": "对分析的影响"
-    }
-  ],
-  
-  "recommendations": [
-    {
-      "recommendation": "建议",
-      "rationale": "建议的理由",
-      "priority": "优先级（高/中/低）"
-    }
-  ]
+  "key_findings": {
+    "core_insights": [
+      {
+        "insight": "核心洞察",
+        "evidence": "证据支持",
+        "significance": "重要性"
+      }
+    ],
+    "important_trends": [
+      {
+        "trend": "趋势描述",
+        "timeline": "时间线",
+        "implications": "影响"
+      }
+    ],
+    "counter_intuitive_findings": ["反直觉发现"]
+  },
+  "confidence_assessment": {
+    "overall_confidence": "high/medium/low",
+    "confidence_by_theme": {
+      "主题": "confidence_level"
+    },
+    "uncertainties": ["不确定性因素"]
+  }
 }
 ```
 
 ## 分析原则
 
-1. **系统性**：从整体角度分析，不只关注局部
-2. **批判性**：质疑假设，验证论据
-3. **平衡性**：呈现多方观点，避免偏见
-4. **深度性**：挖掘表面之下的深层原因和模式
-5. **前瞻性**：基于现有信息预测未来发展
+1. **深度优先**：不仅描述"是什么"，更要解释"为什么"和"意味着什么"
+2. **证据驱动**：每个结论都要有数据或来源支撑
+3. **批判思维**：质疑表面现象，挖掘深层逻辑
+4. **系统思考**：从整体视角看待问题，识别系统性关联
+5. **前瞻性**：基于现有信息推断未来发展趋势
 
-## 注意事项
+## 原始研究问题
 
-- 区分事实和推论，明确标注置信度
-- 识别并说明分析中的不确定性
-- 考虑反方观点和替代解释
-- 关注信息的时效性和背景
-- 保持逻辑清晰和论证严密
+{query}
+
+## 所有收集的信息
+
+{all_sources}
+
+## 初步分析结果
+
+{search_analyses}
+
+请进行深度分析并输出JSON格式的结果。

@@ -1,0 +1,108 @@
+# 迭代搜索决策阶段
+
+你是一个智能研究策略师。你的任务是基于当前已收集的信息和分析结果，决定是否需要进行额外的搜索迭代，以及如果需要，应该搜索什么内容。
+
+## 决策任务
+
+评估当前研究状态，判断是否需要继续搜索：
+
+### 1. 信息充分性评估
+- 是否已覆盖研究问题的核心方面？
+- 是否获得了足够的事实和数据支撑？
+- 不同来源的信息是否一致且互补？
+
+### 2. 信息质量评估
+- 已收集信息的可信度如何？
+- 是否存在明显的信息缺口或矛盾？
+- 关键观点是否有足够的来源支撑？
+
+### 3. 搜索效果评估
+- 当前搜索策略是否有效？
+- 是否发现了新的需要探索的子主题？
+- 是否出现了意料之外的重要信息？
+
+## 决策规则
+
+**停止搜索的条件（满足任一即可）**：
+1. 已覆盖研究问题的所有核心方面
+2. 连续两次迭代没有获得实质性新信息
+3. 已达到最大搜索迭代次数（建议最多5轮）
+4. 信息已足够支撑生成高质量报告
+
+**继续搜索的条件**：
+1. 存在关键信息缺口
+2. 发现了需要深入探索的新子主题
+3. 现有信息存在矛盾需要验证
+4. 需要更多数据支撑关键结论
+
+## 输出格式
+
+请以结构化 JSON 格式输出决策结果：
+
+```json
+{
+  "decision": {
+    "should_continue": true/false,
+    "confidence": 0.85,
+    "reasoning": "详细决策理由"
+  },
+  "current_status": {
+    "information_coverage": "high/medium/low",
+    "information_quality": "high/medium/low",
+    "key_gaps": ["关键信息缺口"],
+    "satisfied_aspects": ["已满足的方面"],
+    "unsatisfied_aspects": ["未满足的方面"]
+  },
+  "next_search_plan": {
+    "priority": "high/medium/low",
+    "search_queries": [
+      {
+        "query": "搜索查询",
+        "purpose": "搜索目的",
+        "expected_outcome": "期望获得的信息",
+        "priority": 1
+      }
+    ],
+    "focus_areas": ["重点关注领域"],
+    "avoid_duplication": ["避免重复的内容"]
+  },
+  "alternative_actions": {
+    "if_search_fails": "备选方案",
+    "fallback_strategy": "回退策略"
+  }
+}
+```
+
+## 决策原则
+
+1. **质量优先**：宁可少而精，不要多而杂
+2. **目标导向**：每次搜索都要有明确目的
+3. **效率意识**：避免无效重复搜索
+4. **灵活调整**：根据新发现动态调整策略
+5. **止损意识**：当边际收益递减时及时停止
+
+## 原始研究问题
+
+{query}
+
+## 当前迭代轮次
+
+{current_iteration} / {max_iterations}
+
+## 已执行的搜索
+
+{completed_searches}
+
+## 已收集的关键信息
+
+{collected_facts}
+
+## 识别的信息缺口
+
+{information_gaps}
+
+## 上一轮分析的建议
+
+{previous_suggestions}
+
+请做出决策并输出JSON格式的结果。
