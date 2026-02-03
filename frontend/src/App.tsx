@@ -4,11 +4,13 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { ResearchChat } from '@/components/ResearchChat'
 import { ReportViewer } from '@/components/ReportViewer'
+import { ProcessVisualizer } from '@/components/ProcessVisualizer'
 import { GitHubLinkWithRestore } from '@/components/GitHubLink'
 import { useResearchStore } from '@/stores/researchStore'
+import { cn } from '@/lib/utils'
 
 function App() {
-  const { isResearching, progress, currentStage, statusMessage } = useResearchStore()
+  const { isResearching, progress, currentStage, statusMessage, report } = useResearchStore()
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -40,41 +42,15 @@ function App() {
         />
       )}
 
-      {/* Main Content */}
+      {/* Main Content - Three Column Layout */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Panel - Chat */}
-        <div className="w-1/2 border-r flex flex-col">
+        <div className={cn(
+          "border-r flex flex-col transition-all duration-300",
+          report ? "w-[30%]" : "w-1/2"
+        )}>
           <ResearchChat />
         </div>
 
-        {/* Right Panel - Report */}
-        <div className="w-1/2 flex flex-col">
-          <ReportViewer />
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="px-6 py-3 border-t bg-card text-xs text-muted-foreground">
-        <div className="flex items-center justify-between">
-          <p>
-            Powered by{' '}
-            <a
-              href="https://siliconflow.cn/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              SiliconFlow
-            </a>
-            {' '}· 使用 DeepSeek & Qwen 等大模型
-          </p>
-          <p>
-            研究过程可能需要 30-120 秒，请耐心等待
-          </p>
-        </div>
-      </footer>
-    </div>
-  )
-}
-
-export default App
+        {/* Middle Panel - Process Visualizer */}
+        <
