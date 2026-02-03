@@ -50,6 +50,7 @@ def create_llm(
     temperature: float = 0.3,
     max_tokens: int = 4000,
     context_length: int = 128000,
+    streaming: bool = False,
     **kwargs
 ) -> ChatOpenAI:
     """
@@ -63,6 +64,7 @@ def create_llm(
         temperature: Sampling temperature (0-2)
         max_tokens: Maximum tokens to generate
         context_length: Maximum context length for the model
+        streaming: Whether to enable streaming mode
         **kwargs: Additional parameters for ChatOpenAI
         
     Returns:
