@@ -47,13 +47,14 @@ const defaultSettings: Settings = {
   model: 'deepseek-ai/DeepSeek-V3.2',
   customModel: '',
   useCustomModel: false,
-  
+
   // Search settings
   searchDays: 30,
   maxResults: 10,
   enablePdf: true,
   language: 'zh',
-  
+  searchEngine: 'bing',
+
   // Model parameters
   contextLength: 128000,
   maxTokens: 4000,
@@ -137,6 +138,7 @@ export const useSettingsStore = create<SettingsState>()(
       setMaxResults: (maxResults) => set({ maxResults }),
       setEnablePdf: (enablePdf) => set({ enablePdf }),
       setLanguage: (language) => set({ language }),
+      setSearchEngine: (searchEngine) => set({ searchEngine }),
       
       // Model parameters actions
       setContextLength: (contextLength) => set({ contextLength }),
@@ -238,7 +240,3 @@ export const cryptoUtils = {
       key,
       ciphertext
     )
-    
-    return new TextDecoder().decode(decrypted)
-  },
-}
