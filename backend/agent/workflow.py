@@ -335,21 +335,36 @@ class ResearchWorkflow:
             response = await self.llm.ainvoke(messages)
             content = response.content
             
+            # Debug: print raw response
+            print(f"Planning response raw content: {content[:500]}...")
+            
             # Extract JSON from response
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0]
             
-            search_queries = json.loads(content.strip())
+            content = content.strip()
+            print(f"Planning extracted content: {content[:500]}...")
+            
+            # Handle empty content
+            if not content:
+                print("Planning error: Empty content after extraction")
+                return [query]
+            
+            search_queries = json.loads(content)
             
             if isinstance(search_queries, list):
                 if query not in search_queries:
                     search_queries.insert(0, query)
                 return search_queries[:5]
+            else:
+                print(f"Planning error: Expected list, got {type(search_queries)}")
             
+        except json.JSONDecodeError as e:
+            print(f"Planning JSON decode error: {e}, content: {content[:200] if 'content' in locals() else 'N/A'}...")
         except Exception as e:
-            print(f"Planning error: {e}, falling back to original query")
+            print(f"Planning error: {type(e).__name__}: {e}, falling back to original query")
         
         return [query]
     
