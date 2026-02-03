@@ -110,7 +110,7 @@ SILICONFLOW_API_KEY=your_siliconflow_api_key
 JINA_API_KEY=your_jina_api_key
 
 # 默认模型 (可选)
-DEFAULT_MODEL=deepseek-ai/DeepSeek-V2.5
+DEFAULT_MODEL=deepseek-ai/DeepSeek-V3.2
 ```
 
 获取 API Key: https://cloud.siliconflow.cn/
@@ -124,10 +124,33 @@ DEFAULT_MODEL=deepseek-ai/DeepSeek-V2.5
 ### 2. 选择模型
 
 在设置中选择合适的模型：
-- **DeepSeek-V2.5** (推荐) - 强推理能力，适合复杂分析
-- **Qwen2-72B** - 中英双语均衡
-- **Llama-3.1-70B** - 英文内容优先
-- **GLM-4-9B** - 轻量快速
+
+**DeepSeek 系列 (推荐)**
+- **DeepSeek-V3.2** - 最新版本，综合性能最强
+- **DeepSeek-V3** - V3 正式版
+- **DeepSeek-R1** - 推理专用模型
+- **DeepSeek-V2.5** - 性价比之选
+
+**Qwen3 系列**
+- **Qwen3-235B-Instruct** - Qwen3 旗舰指令版
+- **Qwen3-235B-Thinking** - Qwen3 旗舰推理版
+- **Qwen3-32B/14B/8B** - 不同规模模型
+
+**Qwen2.5 系列**
+- **Qwen2.5-72B** - 中英双语均衡
+- **Qwen2.5-Coder-32B** - 代码专用
+
+**GLM 系列**
+- **GLM-4.6** - 智谱最新模型
+- **GLM-4-32B/9B** - 不同规模
+
+**Kimi 系列**
+- **Kimi-K2.5** - Moonshot 最新模型
+- **Kimi-K2-Thinking** - 推理专用
+
+**其他**
+- **QwQ-32B** - 推理模型
+- **MiniMax-M2** - MiniMax 模型
 
 ### 3. 开始研究
 
@@ -271,7 +294,7 @@ Content-Type: application/json
   "query": "研究问题",
   "settings": {
     "api_key": "your_api_key",
-    "model": "deepseek-ai/DeepSeek-V2.5",
+    "model": "deepseek-ai/DeepSeek-V3.2",
     "search_days": 30,
     "max_results": 10,
     "enable_pdf": true,
