@@ -871,13 +871,79 @@ class ResearchWorkflow:
                     "error": scrape_result.get("error")
                 })
     
+    async def _generate_report_streaming(
+        self,
+        query: str,
+        scraped_contents: List[Dict[str, Any]],
+        deep_analysis: Dict[str, Any]
+    ) -> AsyncGenerator[str, None]:
+        """Generate structured research report with streaming output."""
+        synthesis_prompt_template = self._load_synthesis_prompt()
+        
+        # Build context from scraped content
+        context_parts = []
+        for idx, item in enumerate(scraped_contents, 1):
+            source = item["source"]
+            content = item["content"]
+            
+            context_parts.append(
+                f"【来源 {idx}】{source.get('title', '')}\n"
+                f"URL: {source.get('link', '')}\n"
+                f"来源网站: {source.get('source', 'Unknown')}\n"
+                f"发布日期: {source.get('date', 'Unknown')}\n"
+                f"内容:\n{content.get('content', '')[:8000]}\n"
+            )
+        
+        context = "\n\n" + "="*50 + "\n\n".join(context_parts)
+        
+        # Include deep analysis insights
+        key_findings = deep_analysis.get("key_findings", {})
+        analysis_context = f"""
+深度分析洞察：
+- 核心主题: {', '.join([t.get('theme', '') for t in deep_analysis.get('theme_decomposition', {}).get('core_themes', [])])}
+- 核心洞察: {', '.join([i.get('insight', '') for i in key_findings.get('core_insights', [])])}
+- 重要趋势: {', '.join([t.get('trend', '') for t in key_findings.get('important_trends', [])])}
+- 整体置信度: {deep_analysis.get('confidence_assessment', {}).get('overall_confidence', 'medium')}
+"""
+        
+        synthesis_prompt = f"""{synthesis_prompt_template}
+
+用户研究查询："{query}"
+
+{analysis_context}
+
+已收集的详细来源资料：
+{context}
+
+请基于以上角色设定、深度分析洞察和收集的资料，生成一份详细的研究报告。报告必须：
+1. 严格遵循上述结构要求
+2. 每个重要论断都必须标注来源引用 [N]
+3. 内容详实，每个部分都要有充分展开
+4. 报告总字数不少于3000字
+5. 融入深度分析阶段的核心洞察
+6. 使用中文撰写"""
+
+        messages = [
+            SystemMessage(content="你是专业的深度研究报告撰写专家，擅长基于多源信息和深度分析生成高质量、结构化的研究报告。"),
+            HumanMessage(content=synthesis_prompt)
+        ]
+        
+        # Stream the report generation
+        async for event in self._stream_llm_response(
+            messages,
+            stage="synthesis",
+            title="📝 正在生成研究报告...",
+            max_tokens=8000
+        ):
+            yield event
+    
     async def _generate_report(
         self,
         query: str,
         scraped_contents: List[Dict[str, Any]],
         deep_analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Generate structured research report."""
+        """Generate structured research report (non-streaming)."""
         synthesis_prompt_template = self._load_synthesis_prompt()
         
         # Build context from scraped content

@@ -10,7 +10,8 @@ import type {
   PlanningData,
   SearchRound,
   AnalysisData,
-  AnalysisStep
+  AnalysisStep,
+  StreamingContent
 } from '@/types'
 
 /**
@@ -66,13 +67,20 @@ interface ResearchState {
   addAnalysisStep: (step: AnalysisStep) => void
   updateProcessPhase: (phase: ResearchStatus) => void
   clearProcessData: () => void
+  
+  // Streaming content actions
+  startStreamingContent: (stage: StreamingContent['stage'], title: string) => string
+  appendStreamingContent: (id: string, chunk: string) => void
+  completeStreamingContent: (id: string) => void
+  clearStreamingContents: () => void
 }
 
 const initialProcessData: ProcessData = {
   planning: null,
   searchRounds: [],
   analysis: null,
-  currentPhase: 'pending'
+  currentPhase: 'pending',
+  streamingContents: []
 }
 
 export const useResearchStore = create<ResearchState>((set) => ({
@@ -244,4 +252,53 @@ export const useResearchStore = create<ResearchState>((set) => ({
   clearProcessData: () => set({
     processData: initialProcessData
   }),
+  
+  // Streaming content actions
+  startStreamingContent: (stage, title) => {
+    const id = `${stage}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const newContent: StreamingContent = {
+      id,
+      stage,
+      title,
+      content: '',
+      isStreaming: true,
+      timestamp: new Date()
+    }
+    set((state) => ({
+      processData: {
+        ...state.processData,
+        streamingContents: [...state.processData.streamingContents, newContent]
+      }
+    }))
+    return id
+  },
+  
+  appendStreamingContent: (id, chunk) => set((state) => ({
+    processData: {
+      ...state.processData,
+      streamingContents: state.processData.streamingContents.map(content =>
+        content.id === id
+          ? { ...content, content: content.content + chunk }
+          : content
+      )
+    }
+  })),
+  
+  completeStreamingContent: (id) => set((state) => ({
+    processData: {
+      ...state.processData,
+      streamingContents: state.processData.streamingContents.map(content =>
+        content.id === id
+          ? { ...content, isStreaming: false }
+          : content
+      )
+    }
+  })),
+  
+  clearStreamingContents: () => set((state) => ({
+    processData: {
+      ...state.processData,
+      streamingContents: []
+    }
+  })),
 }))

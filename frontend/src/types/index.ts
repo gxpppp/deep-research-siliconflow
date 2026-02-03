@@ -240,7 +240,35 @@ export interface ProcessData {
   searchRounds: SearchRound[]
   analysis: AnalysisData | null
   currentPhase: ResearchStatus
+  streamingContents: StreamingContent[]
 }
+
+// Streaming content for real-time display
+export interface StreamingContent {
+  id: string
+  stage: 'planning' | 'search_analysis' | 'deep_analysis' | 'synthesis'
+  title: string
+  content: string
+  isStreaming: boolean
+  timestamp: Date
+  error?: string
+}
+
+// SSE Event types - extended
+export type SSEEventType = 
+  | 'status'
+  | 'tool_call'
+  | 'tool_result'
+  | 'thinking'
+  | 'search_query'
+  | 'source_found'
+  | 'content_start'
+  | 'content_chunk'
+  | 'content_complete'
+  | 'planning_complete'
+  | 'analysis_complete'
+  | 'complete'
+  | 'error'
 
 // Predefined model providers
 export const PREDEFINED_PROVIDERS: ProviderConfig[] = [
