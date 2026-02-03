@@ -1,6 +1,5 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useResearchStore } from '@/stores/researchStore'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { 
@@ -8,7 +7,8 @@ import {
   Search, 
   BrainCircuit, 
   FileText,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -16,14 +16,53 @@ import remarkGfm from 'remark-gfm'
 export function StreamingPanel() {
   const { processData, isResearching } = useResearchStore()
   const { streamingContents } = processData
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isAutoScroll, setIsAutoScroll] = useState(true)
+  const [showScrollButton, setShowScrollButton] = useState(false)
   
-  // Auto-scroll to bottom when new content arrives
+  // Auto-scroll to bottom when new content arrives (only if auto-scroll is enabled)
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (isAutoScroll && scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
     }
-  }, [streamingContents])
+  }, [streamingContents, isAutoScroll])
+  
+  // Handle scroll events to detect if user has manually scrolled up
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
+      
+      // If user scrolls up, disable auto-scroll
+      if (!isAtBottom && isAutoScroll) {
+        setIsAutoScroll(false)
+        setShowScrollButton(true)
+      }
+      
+      // If user scrolls to bottom, re-enable auto-scroll
+      if (isAtBottom && !isAutoScroll) {
+        setIsAutoScroll(true)
+        setShowScrollButton(false)
+      }
+    }
+  }
+  
+  // Scroll to bottom manually
+  const scrollToBottom = () => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+      setIsAutoScroll(true)
+      setShowScrollButton(false)
+    }
+  }
   
   const getStageIcon = (stage: string) => {
     switch (stage) {
@@ -83,8 +122,17 @@ export function StreamingPanel() {
   }
   
   return (
-    <div className="flex flex-col h-full">
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+    <div className="flex flex-col h-full relative">
+      {/* Scrollable content area */}
+      <div 
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 scroll-smooth"
+        style={{ 
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'hsl(var(--muted-foreground)) transparent'
+        }}
+      >
         <div className="space-y-4">
           {streamingContents.map((content) => (
             <div
@@ -166,7 +214,18 @@ export function StreamingPanel() {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
+      
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-4 right-4 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-all animate-in fade-in zoom-in duration-200"
+          title="滚动到最新内容"
+        >
+          <ChevronDown className="w-5 h-5" />
+        </button>
+      )}
     </div>
   )
 }
