@@ -19,6 +19,14 @@ class ResearchStatus(str, Enum):
     TIMEOUT = "timeout"
 
 
+class SearchEngine(str, Enum):
+    """Supported search engines."""
+    BING = "bing"
+    BAIDU = "baidu"
+    DUCKDUCKGO = "duckduckgo"
+    SERPAPI = "serpapi"
+
+
 class Settings(BaseModel):
     """User settings for research configuration."""
     api_key: str = Field(..., description="SiliconFlow API key")
