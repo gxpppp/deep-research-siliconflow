@@ -21,6 +21,7 @@ import {
   Upload,
   PanelLeft,
   PanelRight,
+  LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -31,9 +32,10 @@ interface WorkflowToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitView: () => void;
+  onShowTemplates: () => void;
 }
 
-export function WorkflowToolbar({ onZoomIn, onZoomOut, onFitView }: WorkflowToolbarProps) {
+export function WorkflowToolbar({ onZoomIn, onZoomOut, onFitView, onShowTemplates }: WorkflowToolbarProps) {
   const {
     workflow,
     isDirty,
@@ -102,6 +104,9 @@ export function WorkflowToolbar({ onZoomIn, onZoomOut, onFitView }: WorkflowTool
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={resetWorkflow} title="新建">
           <FilePlus className="w-4 h-4 text-slate-400" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onShowTemplates} title="模板">
+          <LayoutTemplate className="w-4 h-4 text-slate-400" />
         </Button>
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleSave} title="保存">
           <Save className="w-4 h-4 text-slate-400" />

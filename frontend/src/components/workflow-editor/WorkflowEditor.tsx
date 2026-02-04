@@ -37,6 +37,7 @@ import { LoopNode } from './nodes/LoopNode';
 import { NodePalette } from './NodePalette';
 import { PropertyPanel } from './PropertyPanel';
 import { WorkflowToolbar } from './WorkflowToolbar';
+import { TemplateSelector } from './TemplateSelector';
 
 // Node type mapping
 const nodeTypes: NodeTypes = {
@@ -82,7 +83,8 @@ function WorkflowEditorContent() {
   } = useWorkflowEditorStore();
 
   const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isTemplateSelectorOpen, setIsTemplateSelectorOpen] = useState(false);
+  const [hasShownTemplateSelector, setHasShownTemplateSelector] = useState(false);
 
   // Handle node selection
   const onNodeClick = useCallback(
@@ -128,8 +130,22 @@ function WorkflowEditorContent() {
     setTimeout(() => fitView({ padding: 0.2 }), 100);
   }, [fitView]);
 
+  // Show template selector on first load if workflow is empty
+  useEffect(() => {
+    if (!hasShownTemplateSelector && workflow.nodes.length === 0) {
+      setIsTemplateSelectorOpen(true);
+      setHasShownTemplateSelector(true);
+    }
+  }, [hasShownTemplateSelector, workflow.nodes.length]);
+
   return (
     <div className="flex h-full bg-slate-950">
+      {/* Template Selector Modal */}
+      <TemplateSelector
+        isOpen={isTemplateSelectorOpen}
+        onClose={() => setIsTemplateSelectorOpen(false)}
+      />
+
       {/* Left Panel - Node Palette */}
       {isNodePaletteOpen && (
         <div className="w-64 border-r border-slate-800 bg-slate-900 flex flex-col">
@@ -144,6 +160,7 @@ function WorkflowEditorContent() {
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onFitView={() => fitView({ padding: 0.2 })}
+          onShowTemplates={() => setIsTemplateSelectorOpen(true)}
         />
 
         {/* React Flow Canvas */}
@@ -202,6 +219,29 @@ function WorkflowEditorContent() {
                   <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
                   <span className="text-sm text-slate-200">执行中...</span>
                   <span className="text-xs text-slate-400">{execution.progress}%</span>
+                </div>
+              </Panel>
+            )}
+
+            {/* Empty State - Show Template Button */}
+            {workflow.nodes.length === 0 && !execution.isRunning && (
+              <Panel position="center" className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-lg p-6 shadow-lg">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-200">开始创建工作流</h3>
+                    <p className="text-sm text-slate-500 mt-1">从左侧添加节点，或选择预设模板快速开始</p>
+                  </div>
+                  <button
+                    onClick={() => setIsTemplateSelectorOpen(true)}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    选择模板
+                  </button>
                 </div>
               </Panel>
             )}
