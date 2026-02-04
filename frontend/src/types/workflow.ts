@@ -1,6 +1,6 @@
 /**
- * Workflow Editor Types
- * Type definitions for the ComfyUI-style workflow editor
+ * Workflow Editor Types - Enterprise Grade
+ * Type definitions for the professional workflow editor
  */
 
 import { Node, Edge } from '@xyflow/react';
@@ -19,79 +19,257 @@ export type WorkflowNodeType =
   | 'condition' 
   | 'loop';
 
-export interface NodeParameter {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'array' | 'object';
-  label: string;
-  description?: string;
-  default?: any;
-  required?: boolean;
-  options?: { label: string; value: any }[];
-  min?: number;
-  max?: number;
-}
+// ==========================================
+// Data Mapping
+// ==========================================
 
-export interface NodePort {
+export interface DataMappingItem {
   id: string;
-  name: string;
-  type: 'input' | 'output';
-  dataType: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-  required?: boolean;
+  source: string;
+  target: string;
+  transform?: string;
+  required: boolean;
   description?: string;
 }
 
-export interface NodeTypeDefinition {
-  type: WorkflowNodeType;
-  name: string;
+// ==========================================
+// Node Configuration Schema
+// ==========================================
+
+export interface NodeBasicConfig {
+  label: string;
   description: string;
+  icon: string;
+  color: string;
   category: string;
-  icon?: string;
-  color?: string;
-  inputs: NodePort[];
-  outputs: NodePort[];
-  parameters: NodeParameter[];
+  tags: string[];
 }
+
+export interface NodeBusinessConfig {
+  enabled: boolean;
+  timeout: number;
+  retryCount: number;
+  retryInterval: number;
+  retryStrategy: 'fixed' | 'exponential' | 'linear';
+  continueOnError: boolean;
+  errorHandling: 'stop' | 'skip' | 'retry';
+}
+
+export interface NodeDataMappingConfig {
+  inputs: DataMappingItem[];
+  outputs: DataMappingItem[];
+  autoMap: boolean;
+  validateMapping: boolean;
+}
+
+export interface NodeEventsConfig {
+  onBefore: string;
+  onAfter: string;
+  onError: string;
+  onTimeout: string;
+  onRetry: string;
+}
+
+export interface NodeAdvancedConfig {
+  logLevel: 'debug' | 'info' | 'warn' | 'error' | 'silent';
+  permissions: string[];
+  customProperties: Record<string, any>;
+  parallelExecution: boolean;
+  priority: number;
+  version: string;
+}
+
+export interface NodeConfigSchema {
+  basic: NodeBasicConfig;
+  business: NodeBusinessConfig;
+  dataMapping: NodeDataMappingConfig;
+  events: NodeEventsConfig;
+  advanced: NodeAdvancedConfig;
+}
+
+// ==========================================
+// Node Type Specific Configs
+// ==========================================
+
+export interface PlanningNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    maxQueries: number;
+    useEnhancedPlanning: boolean;
+    domainDetection: boolean;
+    queryTemplate: string;
+    includeTimeContext: boolean;
+  };
+}
+
+export interface SearchNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    engine: 'uapi' | 'bing' | 'baidu' | 'duckduckgo' | 'serpapi';
+    maxResults: number;
+    days: number;
+    safeSearch: boolean;
+    region: string;
+    language: string;
+    includeImages: boolean;
+    includeNews: boolean;
+  };
+}
+
+export interface AnalysisNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    enableQualityEvaluation: boolean;
+    qualityThreshold: number;
+    targetQualityScore: number;
+    analysisDepth: 'basic' | 'standard' | 'deep';
+    extractEntities: boolean;
+    generateSummary: boolean;
+  };
+}
+
+export interface SynthesisNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    reportFormat: 'structured' | 'markdown' | 'academic' | 'executive';
+    includeSources: boolean;
+    maxLength: number;
+    language: string;
+    includeCharts: boolean;
+    citationStyle: 'apa' | 'mla' | 'chicago';
+  };
+}
+
+export interface ConditionNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    conditionType: 'expression' | 'javascript' | 'python';
+    conditionExpression: string;
+    trueLabel: string;
+    falseLabel: string;
+    defaultBranch: 'true' | 'false';
+  };
+}
+
+export interface LoopNodeConfig extends NodeConfigSchema {
+  business: NodeBusinessConfig & {
+    maxIterations: number;
+    exitCondition: 'quality_threshold' | 'no_gaps' | 'max_iterations' | 'custom';
+    qualityThreshold: number;
+    customExitExpression: string;
+    loopVariable: string;
+    incrementStrategy: 'linear' | 'exponential';
+  };
+}
+
+export type NodeTypeConfigMap = {
+  start: NodeConfigSchema;
+  end: NodeConfigSchema;
+  planning: PlanningNodeConfig;
+  search: SearchNodeConfig;
+  analysis: AnalysisNodeConfig;
+  synthesis: SynthesisNodeConfig;
+  condition: ConditionNodeConfig;
+  loop: LoopNodeConfig;
+};
 
 // ==========================================
 // Node Data
 // ==========================================
-
-export interface WorkflowNodeData extends Record<string, unknown> {
-  label: string;
-  description?: string;
-  type: WorkflowNodeType;
-  parameters: Record<string, any>;
-  inputs: Record<string, any>;
-  outputs: Record<string, any>;
-  status: NodeExecutionStatus;
-  logs: string[];
-  executionTime?: number;
-  error?: string;
-}
 
 export type NodeExecutionStatus = 
   | 'pending' 
   | 'running' 
   | 'completed' 
   | 'failed' 
-  | 'skipped';
+  | 'skipped'
+  | 'paused'
+  | 'cancelled';
+
+export interface WorkflowNodeData extends Record<string, unknown> {
+  // Core
+  label: string;
+  description: string;
+  type: WorkflowNodeType;
+  
+  // Configuration
+  config: NodeConfigSchema;
+  
+  // Runtime data
+  inputs: Record<string, any>;
+  outputs: Record<string, any>;
+  status: NodeExecutionStatus;
+  logs: string[];
+  executionTime?: number;
+  error?: string;
+  retryCount: number;
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  version: string;
+}
 
 export interface WorkflowNode extends Node<WorkflowNodeData> {
   type: WorkflowNodeType;
 }
 
 // ==========================================
-// Edge Data
+// Edge Configuration
 // ==========================================
 
-export interface WorkflowEdgeData extends Record<string, unknown> {
-  condition?: string;
-  label?: string;
-  animated?: boolean;
+export interface EdgeStyleConfig {
+  strokeWidth: number;
+  strokeColor: string;
+  strokeStyle: 'solid' | 'dashed' | 'dotted';
+  arrowStart: boolean;
+  arrowEnd: boolean;
+  curvature: number;
+  animated: boolean;
+  animationSpeed: number;
 }
 
+export interface EdgeBranchCondition {
+  type: 'if' | 'else' | 'elseif' | 'default';
+  expression: string;
+  priority: number;
+  label: string;
+  color: string;
+}
+
+export interface EdgeLabelConfig {
+  text: string;
+  position: 'start' | 'middle' | 'end';
+  backgroundColor: string;
+  textColor: string;
+  fontSize: number;
+  borderRadius: number;
+  padding: number;
+}
+
+export interface WorkflowEdgeData extends Record<string, unknown> {
+  // Basic
+  id: string;
+  
+  // Style
+  style: EdgeStyleConfig;
+  
+  // Label
+  label: EdgeLabelConfig;
+  
+  // Condition
+  branchCondition?: EdgeBranchCondition;
+  
+  // Metadata
+  metadata: {
+    createdAt: string;
+    updatedAt: string;
+    createdBy: string;
+    description: string;
+    tags: string[];
+  };
+}
+
+export type EdgeType = 'straight' | 'smoothstep' | 'bezier' | 'step';
+
 export interface WorkflowEdge extends Edge<WorkflowEdgeData> {
-  type?: 'default' | 'smoothstep' | 'step' | 'straight';
+  type: EdgeType;
 }
 
 // ==========================================
@@ -102,15 +280,29 @@ export interface WorkflowMetadata {
   name: string;
   description: string;
   version: string;
-  author?: string;
+  author: string;
   createdAt: string;
   updatedAt: string;
-  tags?: string[];
+  tags: string[];
+  category: string;
+  isTemplate: boolean;
+  isPublic: boolean;
+}
+
+export interface WorkflowSettings {
+  autoSave: boolean;
+  autoSaveInterval: number;
+  showGrid: boolean;
+  snapToGrid: boolean;
+  gridSize: number;
+  defaultEdgeType: EdgeType;
+  theme: 'light' | 'dark' | 'system';
 }
 
 export interface Workflow {
   id: string;
   metadata: WorkflowMetadata;
+  settings: WorkflowSettings;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   viewport?: {
@@ -121,6 +313,63 @@ export interface Workflow {
 }
 
 // ==========================================
+// Validation
+// ==========================================
+
+export interface ValidationRule {
+  field: string;
+  type: 'required' | 'min' | 'max' | 'pattern' | 'email' | 'url' | 'custom' | 'range';
+  message: string;
+  value?: any;
+  min?: number;
+  max?: number;
+  pattern?: RegExp;
+  validator?: (value: any, context?: any) => boolean;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  type: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
+}
+
+// ==========================================
+// Templates
+// ==========================================
+
+export interface NodeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  nodeType: WorkflowNodeType;
+  config: NodeConfigSchema;
+  isDefault: boolean;
+  isPublic: boolean;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  usageCount: number;
+}
+
+export interface EdgeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  style: EdgeStyleConfig;
+  label: EdgeLabelConfig;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
 // Execution
 // ==========================================
 
@@ -128,27 +377,39 @@ export interface ExecutionContext {
   query: string;
   settings: Record<string, any>;
   startTime: string;
+  endTime?: string;
   durationMs?: number;
+  variables: Record<string, any>;
 }
 
 export interface ExecutionEvent {
-  type: 'node_start' | 'node_complete' | 'workflow_complete' | 'error';
+  type: 'node_start' | 'node_complete' | 'node_error' | 'node_retry' | 'workflow_complete' | 'workflow_error' | 'workflow_cancelled';
   nodeId?: string;
   nodeType?: string;
   success?: boolean;
   output?: any;
   logs?: string[];
+  error?: string;
   message?: string;
   durationMs?: number;
+  timestamp: string;
 }
 
 export interface ExecutionState {
   isRunning: boolean;
+  isPaused: boolean;
   currentNodeId?: string;
   progress: number;
   startTime?: string;
   endTime?: string;
   logs: string[];
+  variables: Record<string, any>;
+  statistics: {
+    totalNodes: number;
+    completedNodes: number;
+    failedNodes: number;
+    skippedNodes: number;
+  };
 }
 
 // ==========================================
@@ -166,6 +427,8 @@ export interface EditorState {
   // UI State
   isNodePaletteOpen: boolean;
   isPropertyPanelOpen: boolean;
+  isTemplatePanelOpen: boolean;
+  activeTab: string;
   
   // Execution
   execution: ExecutionState;
@@ -181,6 +444,15 @@ export interface EditorState {
     nodes: WorkflowNode[];
     edges: WorkflowEdge[];
   } | null;
+  
+  // Validation
+  validation: ValidationResult;
+  
+  // Templates
+  templates: {
+    nodeTemplates: NodeTemplate[];
+    edgeTemplates: EdgeTemplate[];
+  };
 }
 
 // ==========================================
@@ -190,15 +462,22 @@ export interface EditorState {
 export interface CreateWorkflowRequest {
   name: string;
   description?: string;
+  category?: string;
+  tags?: string[];
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
+  settings?: Partial<WorkflowSettings>;
 }
 
 export interface UpdateWorkflowRequest {
   name?: string;
   description?: string;
+  category?: string;
+  tags?: string[];
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
+  settings?: Partial<WorkflowSettings>;
+  metadata?: Partial<WorkflowMetadata>;
 }
 
 export interface WorkflowListItem {
@@ -206,27 +485,34 @@ export interface WorkflowListItem {
   name: string;
   description: string;
   version: string;
+  author: string;
   createdAt: string;
   updatedAt: string;
+  category: string;
+  tags: string[];
   nodeCount: number;
   edgeCount: number;
+  isTemplate: boolean;
+  isPublic: boolean;
 }
 
 export interface WorkflowValidationResult {
   valid: boolean;
   errors: string[];
+  warnings: string[];
   nodeCount: number;
   edgeCount: number;
 }
 
 // ==========================================
-// Node Categories
+// Constants
 // ==========================================
 
 export const NODE_CATEGORIES = {
-  flow: { label: '流程控制', color: '#6366f1' },
-  research: { label: '研究节点', color: '#10b981' },
-  logic: { label: '逻辑控制', color: '#f59e0b' },
+  flow: { label: '流程控制', color: '#6366f1', icon: 'GitBranch' },
+  research: { label: '研究节点', color: '#10b981', icon: 'Search' },
+  logic: { label: '逻辑控制', color: '#f59e0b', icon: 'Brain' },
+  io: { label: '输入输出', color: '#3b82f6', icon: 'Database' },
 } as const;
 
 export const NODE_TYPE_COLORS: Record<WorkflowNodeType, string> = {
@@ -249,4 +535,56 @@ export const NODE_TYPE_ICONS: Record<WorkflowNodeType, string> = {
   synthesis: 'FileText',
   condition: 'GitBranch',
   loop: 'Repeat',
+};
+
+export const DEFAULT_NODE_CONFIG: NodeConfigSchema = {
+  basic: {
+    label: 'New Node',
+    description: '',
+    icon: 'Circle',
+    color: '#64748b',
+    category: 'general',
+    tags: [],
+  },
+  business: {
+    enabled: true,
+    timeout: 30000,
+    retryCount: 3,
+    retryInterval: 1000,
+    retryStrategy: 'exponential',
+    continueOnError: false,
+    errorHandling: 'stop',
+  },
+  dataMapping: {
+    inputs: [],
+    outputs: [],
+    autoMap: false,
+    validateMapping: true,
+  },
+  events: {
+    onBefore: '',
+    onAfter: '',
+    onError: '',
+    onTimeout: '',
+    onRetry: '',
+  },
+  advanced: {
+    logLevel: 'info',
+    permissions: [],
+    customProperties: {},
+    parallelExecution: false,
+    priority: 0,
+    version: '1.0.0',
+  },
+};
+
+export const DEFAULT_EDGE_STYLE: EdgeStyleConfig = {
+  strokeWidth: 2,
+  strokeColor: '#64748b',
+  strokeStyle: 'solid',
+  arrowStart: false,
+  arrowEnd: true,
+  curvature: 0.5,
+  animated: false,
+  animationSpeed: 1,
 };
