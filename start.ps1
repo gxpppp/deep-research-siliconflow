@@ -4,7 +4,7 @@
 param(
     [switch]$BackendOnly,
     [switch]$FrontendOnly,
-    [int]$BackendPort = 8000,
+    [int]$BackendPort = 8001,
     [int]$FrontendPort = 5173
 )
 

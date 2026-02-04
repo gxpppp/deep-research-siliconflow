@@ -58,22 +58,22 @@ echo.
 echo ==========================================
 echo    正在启动服务...
 echo    前端: http://localhost:5173
-echo    后端: http://localhost:8000
-echo    API文档: http://localhost:8000/docs
+echo    后端: http://localhost:8001
+echo    API文档: http://localhost:8001/docs
 echo ==========================================
 echo.
 echo 按 Ctrl+C 停止服务
 echo.
 
 REM 启动后端 (在新窗口)
-start "DeepResearch Backend" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "DeepResearch Backend" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate && uvicorn main:app --host 0.0.0.0 --port 8001 --reload"
 
 REM 等待后端启动
 timeout /t 3 /nobreak >nul
 
 REM 启动前端 (在当前窗口)
 cd /d "%~dp0frontend"
-npm run dev
+npm run dev -- --port 5173
 
 REM 清理
 echo.
