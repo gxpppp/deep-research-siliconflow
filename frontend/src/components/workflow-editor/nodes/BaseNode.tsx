@@ -60,7 +60,7 @@ export const BaseNode = memo(({
   const color = NODE_TYPE_COLORS[data.type];
   const IconComponent = (Icons as any)[icon];
   const [isExpanded, setIsExpanded] = useState(false);
-  const { updateNode, selectNode } = useWorkflowEditorStore();
+  const { updateNode, selectNode, setPropertyPanelOpen } = useWorkflowEditorStore();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -293,6 +293,7 @@ export const BaseNode = memo(({
                 onClick={(e) => {
                   e.stopPropagation();
                   selectNode(id);
+                  setPropertyPanelOpen(true);
                 }}
               >
                 <Settings className="w-3 h-3 mr-1" />

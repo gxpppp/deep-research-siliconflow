@@ -92,7 +92,10 @@ export function EditableField({
 
   return (
     <div
-      onClick={handleStartEdit}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleStartEdit();
+      }}
       className={`group flex items-center gap-1 cursor-pointer hover:bg-slate-700/50 rounded px-1 py-0.5 transition-colors ${className}`}
     >
       <span className="text-slate-200 truncate">{value || placeholder}</span>
@@ -168,7 +171,10 @@ export function EditableTextarea({
 
   return (
     <div
-      onClick={() => setIsEditing(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsEditing(true);
+      }}
       className="group cursor-pointer hover:bg-slate-700/50 rounded px-1 py-0.5 transition-colors"
     >
       {value ? (
