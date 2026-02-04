@@ -38,6 +38,7 @@ import { NodePalette } from './NodePalette';
 import { PropertyPanel } from './PropertyPanel';
 import { WorkflowToolbar } from './WorkflowToolbar';
 import { TemplateSelector } from './TemplateSelector';
+import { ExecutionControlPanel } from './ExecutionControlPanel';
 
 // Node type mapping
 const nodeTypes: NodeTypes = {
@@ -80,6 +81,10 @@ function WorkflowEditorContent() {
     selectEdge,
     deselectAll,
     setViewport,
+    startExecution,
+    stopExecution,
+    resetExecution,
+    updateNodeStatus,
   } = useWorkflowEditorStore();
 
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -138,6 +143,56 @@ function WorkflowEditorContent() {
     }
   }, [hasShownTemplateSelector, workflow.nodes.length]);
 
+  // Handle execution start
+  const handleStartExecution = useCallback((input: string) => {
+    startExecution(input);
+    
+    // Simulate execution for demo (remove in production)
+    simulateExecution();
+  }, [startExecution]);
+
+  // Simulate execution for demo purposes
+  const simulateExecution = useCallback(() => {
+    const nodeIds = workflow.nodes.map(n => n.id);
+    let currentIndex = 0;
+
+    const executeNext = () => {
+      if (currentIndex >= nodeIds.length) {
+        // Execution complete
+        return;
+      }
+
+      const nodeId = nodeIds[currentIndex];
+      
+      // Start node execution
+      updateNodeStatus(nodeId, 'running');
+      
+      // Simulate execution time (1-3 seconds)
+      setTimeout(() => {
+        // Randomly succeed or fail (90% success rate)
+        const success = Math.random() > 0.1;
+        
+        if (success) {
+          updateNodeStatus(nodeId, 'completed', [
+            `[INFO] Node execution started`,
+            `[INFO] Processing data...`,
+            `[INFO] Execution completed successfully`,
+          ]);
+        } else {
+          updateNodeStatus(nodeId, 'failed', [
+            `[INFO] Node execution started`,
+            `[ERROR] Execution failed: Network timeout`,
+          ]);
+        }
+        
+        currentIndex++;
+        executeNext();
+      }, 1000 + Math.random() * 2000);
+    };
+
+    executeNext();
+  }, [workflow.nodes, updateNodeStatus]);
+
   return (
     <div className="flex h-full bg-slate-950">
       {/* Template Selector Modal */}
@@ -155,6 +210,14 @@ function WorkflowEditorContent() {
 
       {/* Center - Canvas */}
       <div className="flex-1 flex flex-col">
+        {/* Execution Control Panel */}
+        <ExecutionControlPanel
+          onStartExecution={handleStartExecution}
+          onPauseExecution={() => console.log('Pause execution')}
+          onStopExecution={stopExecution}
+          onResetExecution={resetExecution}
+        />
+
         {/* Toolbar */}
         <WorkflowToolbar
           onZoomIn={zoomIn}
@@ -197,6 +260,11 @@ function WorkflowEditorContent() {
             <MiniMap
               className="bg-slate-800 border-slate-700"
               nodeColor={(node) => {
+                const nodeData = node.data as WorkflowNode['data'];
+                if (nodeData.status === 'running') return '#3b82f6';
+                if (nodeData.status === 'completed') return '#10b981';
+                if (nodeData.status === 'failed') return '#ef4444';
+                
                 const colors: Record<string, string> = {
                   start: '#10b981',
                   end: '#ef4444',
@@ -211,17 +279,6 @@ function WorkflowEditorContent() {
               }}
               maskColor="rgba(15, 23, 42, 0.8)"
             />
-
-            {/* Execution Status Panel */}
-            {execution.isRunning && (
-              <Panel position="top-center" className="bg-slate-800/90 backdrop-blur border border-slate-700 rounded-lg p-3 shadow-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-sm text-slate-200">执行中...</span>
-                  <span className="text-xs text-slate-400">{execution.progress}%</span>
-                </div>
-              </Panel>
-            )}
 
             {/* Empty State - Show Template Button */}
             {workflow.nodes.length === 0 && !execution.isRunning && (
