@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Suspense, lazy } from 'react'
 import { Brain, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ProgressBar } from '@/components/ProgressBar'
@@ -9,21 +9,38 @@ import { ProcessVisualizer } from '@/components/ProcessVisualizer'
 import { ResearchHistoryPanel } from '@/components/ResearchHistoryPanel'
 import { GitHubLinkWithRestore } from '@/components/GitHubLink'
 import { ModeSwitcher } from '@/components/ModeSwitcher'
-import { WorkflowEditorApp } from '@/components/workflow-editor/WorkflowEditorApp'
+import { ToastContainer } from '@/components/Toast'
 import { useResearchStore } from '@/stores/researchStore'
 import { cn } from '@/lib/utils'
+
+// Lazy load Workflow Editor for code splitting
+const WorkflowEditorApp = lazy(() => import('@/components/workflow-editor/WorkflowEditorApp'))
+
+// Loading fallback component
+function WorkflowEditorLoading() {
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-slate-950">
+      <div className="text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-slate-400">加载工作流编辑器...</p>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const { isResearching, progress, currentStage, statusMessage, report } = useResearchStore()
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [mode, setMode] = useState<'basic' | 'advanced'>('basic')
 
-  // Advanced Mode - Workflow Editor
+  // Advanced Mode - Workflow Editor (Lazy Loaded)
   if (mode === 'advanced') {
     return (
-      <div className="h-screen w-full">
-        <WorkflowEditorApp />
-      </div>
+      <Suspense fallback={<WorkflowEditorLoading />}>
+        <div className="h-screen w-full">
+          <WorkflowEditorApp />
+        </div>
+      </Suspense>
     )
   }
 
@@ -102,6 +119,9 @@ function App() {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t bg-card text-xs text-muted-foreground">

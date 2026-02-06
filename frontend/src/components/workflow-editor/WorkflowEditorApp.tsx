@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { WorkflowEditor } from './WorkflowEditor';
 import { useWorkflowEditorStore } from '@/stores/workflowEditorStore';
 
-export function WorkflowEditorApp() {
+export default function WorkflowEditorApp() {
   const { workflow, resetExecution } = useWorkflowEditorStore();
 
   // Reset execution state when component mounts
